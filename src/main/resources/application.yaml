@@ -1,0 +1,6 @@
+cloudflare:
+  r2:
+    endpoint: https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com
+    access-key: ${CLOUDFLARE_ACCESS_KEY_ID}
+    secret-key: ${CLOUDFLARE_SECRET_ACCESS_KEY}
+    bucket-name: "categories"
