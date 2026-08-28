@@ -12,4 +12,10 @@ public class CloudflareProperties {
     private String accessKey;
     private String secretKey;
     private String bucket;
+
+
+    public String getBucketName(){
+        return bucket;
+    }
+    public void setBucketName(String bucketName){this.bucket = bucketName;}
 }
