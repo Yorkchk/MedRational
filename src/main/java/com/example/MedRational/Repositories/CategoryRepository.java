@@ -21,4 +21,8 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     // Fetch category with its reasonings pre-loaded in a single query (prevents N+1)
     @Query("SELECT DISTINCT c FROM Category c LEFT JOIN FETCH c.reasonings WHERE c.id = :id")
     Optional<Category> findByIdWithReasonings(@Param("id") Long id);
+
+    boolean existsByNameIgnoreCase(String name);
+    boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
+
 }

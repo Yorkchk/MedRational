@@ -17,4 +17,5 @@ public class CloudflareProperties {
     public String getBucketName(){
         return bucket;
     }
+    public void setBucketName(String bucketName){this.bucket = bucketName;}
 }

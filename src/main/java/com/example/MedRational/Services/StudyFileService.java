@@ -30,7 +30,12 @@ public class StudyFileService {
         Reasoning reasoning = reasoningRepository.findById(reasoningId)
                 .orElseThrow(() -> new EntityNotFoundException("Reasoning not found with ID: " + reasoningId));
 
-        String folderPrefix = "reasonings/" + reasoningId;
+        String categoryFolder = sanitizePath(reasoning.getCategory().getName());
+        String reasoningFolder = sanitizePath(reasoning.getTitle());
+
+        // Constructs: Categories/Cardiology/Heart_Failure/
+        String folderPrefix = "Categories/" + categoryFolder + "/" + reasoningFolder;
+
         String storageKey = r2StorageService.uploadFile(file, folderPrefix);
         String publicUrl = r2StorageService.buildPublicUrl(storageKey);
 
@@ -69,5 +74,12 @@ public class StudyFileService {
 
         r2StorageService.deleteFile(studyFile.getStorageKey());
         studyFileRepository.delete(studyFile);
+    }
+
+    private String sanitizePath(String input) {
+        if (input == null || input.isBlank()) {
+            return "unnamed";
+        }
+        return input.trim().replaceAll("[^a-zA-Z0-9-_]", "_");
     }
 }

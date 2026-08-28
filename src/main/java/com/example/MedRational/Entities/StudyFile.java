@@ -23,7 +23,7 @@ public class StudyFile {
     @Column(name = "file_name", nullable = false, length = 255)
     private String fileName;
 
-    @Column(name = "file_type", length = 50)
+    @Column(name = "file_type", length = 255)
     private String fileType; // e.g., "application/pdf", "image/png"
 
     @Column(name = "storage_key", nullable = false, length = 500)

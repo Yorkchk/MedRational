@@ -10,8 +10,12 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.model.Delete;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -22,17 +26,22 @@ public class R2StorageService {
     private final CloudflareProperties cloudflareProperties;
 
     public String uploadFile(MultipartFile file, String prefix) throws IOException {
-        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
-        String storageKey = prefix + "/" + UUID.randomUUID() + "-" + originalFilename;
+        String originalFilename = file.getOriginalFilename() != null
+                ? file.getOriginalFilename().replaceAll("\\s+", "_")
+                : "file";
+
+        // Format: Categories/{Category}/{Reasoning}/{shortUUID}-{filename}
+        String storageKey = prefix + "/" + UUID.randomUUID().toString().substring(0, 8) + "-" + originalFilename;
 
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(cloudflareProperties.getBucketName())
                 .key(storageKey)
                 .contentType(file.getContentType())
-                .contentLength(file.getSize())
                 .build();
 
-        s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+        // Fix: Pass byte array directly to avoid stream length mismatches
+        s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.getBytes()));
+
         return storageKey;
     }
 
@@ -66,5 +75,22 @@ public class R2StorageService {
 
     public String buildPublicUrl(String storageKey) {
         return cloudflareProperties.getEndpoint() + "/" + cloudflareProperties.getBucketName() + "/" + storageKey;
+    }
+
+    public void deleteFiles(List<String> storageKeys) {
+        if (storageKeys == null || storageKeys.isEmpty()) {
+            return;
+        }
+
+        List<ObjectIdentifier> objectsToDelete = storageKeys.stream()
+                .map(key -> ObjectIdentifier.builder().key(key).build())
+                .toList();
+
+        DeleteObjectsRequest request = DeleteObjectsRequest.builder()
+                .bucket(cloudflareProperties.getBucketName())
+                .delete(Delete.builder().objects(objectsToDelete).build())
+                .build();
+
+        s3Client.deleteObjects(request);
     }
 }

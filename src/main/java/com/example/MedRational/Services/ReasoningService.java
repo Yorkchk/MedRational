@@ -4,6 +4,7 @@ import com.example.MedRational.DTOs.ReasoningRequest;
 import com.example.MedRational.DTOs.ReasoningResponse;
 import com.example.MedRational.Entities.Category;
 import com.example.MedRational.Entities.Reasoning;
+import com.example.MedRational.Entities.StudyFile;
 import com.example.MedRational.Repositories.CategoryRepository;
 import com.example.MedRational.Repositories.ReasoningRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -21,6 +22,7 @@ public class ReasoningService {
     private final ReasoningRepository reasoningRepository;
     private final CategoryRepository categoryRepository;
     private final MappingService mappingService;
+    private final R2StorageService r2StorageService;
 
     @Transactional(readOnly = true)
     public List<ReasoningResponse> getReasoningsByCategory(Long categoryId) {
@@ -69,9 +71,20 @@ public class ReasoningService {
 
     @Transactional
     public void deleteReasoning(Long id) {
-        if (!reasoningRepository.existsById(id)) {
-            throw new EntityNotFoundException("Reasoning not found with ID: " + id);
+        Reasoning reasoning = reasoningRepository.findByIdWithFiles(id)
+                .orElseThrow(() -> new EntityNotFoundException("Reasoning not found with ID: " + id));
+
+        // Extract all R2 storage keys
+        List<String> keysToDelete = reasoning.getFiles().stream()
+                .map(StudyFile::getStorageKey)
+                .toList();
+
+        // 1. Delete all assets from Cloudflare R2
+        if (!keysToDelete.isEmpty()) {
+            r2StorageService.deleteFiles(keysToDelete);
         }
-        reasoningRepository.deleteById(id);
+
+        // 2. Delete database row (cascades to study_files in Supabase)
+        reasoningRepository.delete(reasoning);
     }
 }
