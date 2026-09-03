@@ -19,11 +19,9 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Nullable for regular guest users; required for admins
     @Column(unique = true, length = 255)
     private String email;
 
-    // Nullable for regular guest users; required for admins
     @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
@@ -31,6 +29,12 @@ public class User {
     @Column(nullable = false, length = 50)
     @Builder.Default
     private Role role = Role.ROLE_STUDENT;
+
+    @Column(name = "otp_code", length = 6)
+    private String otpCode;
+
+    @Column(name = "otp_expiry")
+    private LocalDateTime otpExpiry;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

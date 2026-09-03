@@ -4,3 +4,20 @@ cloudflare:
     access-key: ${CLOUDFLARE_ACCESS_KEY_ID}
     secret-key: ${CLOUDFLARE_SECRET_ACCESS_KEY}
     bucket-name: "categories"
+
+spring:
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 86400000
