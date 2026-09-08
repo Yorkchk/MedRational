@@ -21,3 +21,7 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
   expiration: 86400000
+
+server:
+  port: 8080
+  address: 0.0.0.0   # Binds to all network interfaces so local devices can reach it

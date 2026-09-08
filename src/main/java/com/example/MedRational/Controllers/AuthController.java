@@ -22,8 +22,9 @@ public class AuthController {
 
     // Step 1: Admin logs in -> generates OTP & sends email
     @PostMapping("/login")
-    public ResponseEntity<String> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.initiateAdminLogin(request));
+    public ResponseEntity<AuthMessageResponse> login(@Valid @RequestBody LoginRequest request) {
+        String msg = authService.initiateAdminLogin(request);
+        return ResponseEntity.ok(new AuthMessageResponse(msg));
     }
 
     // Step 2: Admin enters 6-digit OTP -> gets JWT Token
