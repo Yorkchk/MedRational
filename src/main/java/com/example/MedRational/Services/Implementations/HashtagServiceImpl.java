@@ -1,18 +1,17 @@
-package com.example.MedRational.Services.Impl;
+package com.example.MedRational.Services.Implementations;
 
 import com.example.MedRational.DTOs.HashtagResponseDTO;
 import com.example.MedRational.Entities.Hashtag;
 import com.example.MedRational.Entities.StudyFile;
 import com.example.MedRational.Repositories.HashtagRepository;
 import com.example.MedRational.Repositories.StudyFileRepository;
-import com.example.MedRational.Services.HashtagService;
+import com.example.MedRational.Services.Interfaces.HashtagService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;

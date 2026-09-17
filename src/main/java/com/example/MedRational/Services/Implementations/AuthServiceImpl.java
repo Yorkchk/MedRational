@@ -1,10 +1,11 @@
-package com.example.MedRational.Services;
+package com.example.MedRational.Services.Implementations;
 
 import com.example.MedRational.DTOs.*;
 import com.example.MedRational.Entities.Role;
 import com.example.MedRational.Entities.User;
 import com.example.MedRational.Repositories.UserRepository;
 import com.example.MedRational.Security.JwtUtil;
+import com.example.MedRational.Services.Interfaces.AuthService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,11 +17,11 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
-public class AuthService {
+public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final EmailService emailService;
+    private final EmailServiceImpl emailService;
     private final JwtUtil jwtUtil;
 
     // Endpoint you use directly to provision Admins (never exposed on public UI)

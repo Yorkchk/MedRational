@@ -2,7 +2,8 @@ package com.example.MedRational.Controllers;
 
 import com.example.MedRational.DTOs.ReasoningRequest;
 import com.example.MedRational.DTOs.ReasoningResponse;
-import com.example.MedRational.Services.ReasoningService;
+import com.example.MedRational.Services.Implementations.ReasoningServiceImpl;
+import com.example.MedRational.Services.Interfaces.ReasoningService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

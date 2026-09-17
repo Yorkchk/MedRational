@@ -1,8 +1,14 @@
 package com.example.MedRational.Controllers;
 
+import com.example.MedRational.DTOs.FileSearchFilterDTO;
 import com.example.MedRational.DTOs.StudyFileResponse;
-import com.example.MedRational.Services.StudyFileService;
+import com.example.MedRational.DTOs.StudyFileResponseDTO;
+import com.example.MedRational.Services.Interfaces.StudyFileService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +29,13 @@ public class StudyFileController {
     @GetMapping("/reasoning/{reasoningId}")
     public ResponseEntity<List<StudyFileResponse>> getFilesByReasoning(@PathVariable Long reasoningId) {
         return ResponseEntity.ok(studyFileService.getFilesByReasoning(reasoningId));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<Page<StudyFileResponseDTO>> searchFiles(
+            @ModelAttribute FileSearchFilterDTO filter,
+            @PageableDefault(size = 20, sort = "uploadedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(studyFileService.searchFiles(filter, pageable));
     }
 
     // Admin Only: Upload a single file (PDF/Image) to a reasoning

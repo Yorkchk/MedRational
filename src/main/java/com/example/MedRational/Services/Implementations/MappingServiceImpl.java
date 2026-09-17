@@ -1,4 +1,4 @@
-package com.example.MedRational.Services;
+package com.example.MedRational.Services.Implementations;
 
 import com.example.MedRational.DTOs.CategoryResponse;
 import com.example.MedRational.DTOs.ReasoningResponse;
@@ -12,7 +12,7 @@ import java.util.Collections;
 import java.util.stream.Collectors;
 
 @Component
-public class MappingService {
+public class MappingServiceImpl {
 
     public CategoryResponse toCategoryResponse(Category category) {
         return CategoryResponse.builder()

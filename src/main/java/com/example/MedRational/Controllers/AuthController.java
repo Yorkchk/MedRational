@@ -1,7 +1,8 @@
 package com.example.MedRational.Controllers;
 
 import com.example.MedRational.DTOs.*;
-import com.example.MedRational.Services.AuthService;
+import com.example.MedRational.Services.Implementations.AuthServiceImpl;
+import com.example.MedRational.Services.Interfaces.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

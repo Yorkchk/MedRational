@@ -1,6 +1,7 @@
-package com.example.MedRational.Services;
+package com.example.MedRational.Services.Implementations;
 
 import com.example.MedRational.Cloudflare.CloudflareProperties;
+import com.example.MedRational.Services.Interfaces.R2StorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -20,7 +21,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class R2StorageService {
+public class R2StorageServiceImpl implements R2StorageService {
 
     private final S3Client s3Client;
     private final CloudflareProperties cloudflareProperties;

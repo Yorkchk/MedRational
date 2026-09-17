@@ -1,4 +1,4 @@
-package com.example.MedRational.Services;
+package com.example.MedRational.Services.Implementations;
 
 import com.example.MedRational.DTOs.DownloadableFile;
 import com.example.MedRational.Entities.Category;
@@ -7,6 +7,7 @@ import com.example.MedRational.Entities.StudyFile;
 import com.example.MedRational.Repositories.CategoryRepository;
 import com.example.MedRational.Repositories.ReasoningRepository;
 import com.example.MedRational.Repositories.StudyFileRepository;
+import com.example.MedRational.Services.Interfaces.ExportDownloadService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
@@ -23,12 +24,12 @@ import java.util.zip.ZipOutputStream;
 
 @Service
 @RequiredArgsConstructor
-public class ExportDownloadService {
+public class ExportDownloadServiceImpl implements ExportDownloadService {
 
     private final StudyFileRepository studyFileRepository;
     private final ReasoningRepository reasoningRepository;
     private final CategoryRepository categoryRepository;
-    private final R2StorageService r2StorageService;
+    private final R2StorageServiceImpl r2StorageService;
 
     // 1. Download Single File
     @Transactional(readOnly = true)

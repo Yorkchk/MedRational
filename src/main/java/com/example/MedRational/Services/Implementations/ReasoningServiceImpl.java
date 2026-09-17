@@ -1,4 +1,4 @@
-package com.example.MedRational.Services;
+package com.example.MedRational.Services.Implementations;
 
 import com.example.MedRational.DTOs.ReasoningRequest;
 import com.example.MedRational.DTOs.ReasoningResponse;
@@ -7,6 +7,7 @@ import com.example.MedRational.Entities.Reasoning;
 import com.example.MedRational.Entities.StudyFile;
 import com.example.MedRational.Repositories.CategoryRepository;
 import com.example.MedRational.Repositories.ReasoningRepository;
+import com.example.MedRational.Services.Interfaces.ReasoningService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,12 +18,12 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class ReasoningService {
+public class ReasoningServiceImpl implements ReasoningService {
 
     private final ReasoningRepository reasoningRepository;
     private final CategoryRepository categoryRepository;
-    private final MappingService mappingService;
-    private final R2StorageService r2StorageService;
+    private final MappingServiceImpl mappingService;
+    private final R2StorageServiceImpl r2StorageService;
 
     @Transactional(readOnly = true)
     public List<ReasoningResponse> getReasoningsByCategory(Long categoryId) {

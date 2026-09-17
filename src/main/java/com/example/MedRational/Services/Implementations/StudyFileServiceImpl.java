@@ -1,10 +1,11 @@
-package com.example.MedRational.Services;
+package com.example.MedRational.Services.Implementations;
 
 import com.example.MedRational.DTOs.StudyFileResponse;
 import com.example.MedRational.Entities.Reasoning;
 import com.example.MedRational.Entities.StudyFile;
 import com.example.MedRational.Repositories.ReasoningRepository;
 import com.example.MedRational.Repositories.StudyFileRepository;
+import com.example.MedRational.Services.Interfaces.StudyFileService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,15 +16,23 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import com.example.MedRational.DTOs.FileSearchFilterDTO;
+import com.example.MedRational.DTOs.StudyFileResponseDTO;
+import com.example.MedRational.Entities.Hashtag;
+import com.example.MedRational.Specifications.StudyFileSpecification;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+
 
 @Service
 @RequiredArgsConstructor
-public class StudyFileService {
+public class StudyFileServiceImpl implements StudyFileService {
 
     private final StudyFileRepository studyFileRepository;
     private final ReasoningRepository reasoningRepository;
-    private final R2StorageService r2StorageService;
-    private final MappingService mappingService;
+    private final R2StorageServiceImpl r2StorageService;
+    private final MappingServiceImpl mappingService;
 
     @Transactional
     public StudyFileResponse uploadFileToReasoning(Long reasoningId, MultipartFile file) throws IOException {
@@ -81,5 +90,35 @@ public class StudyFileService {
             return "unnamed";
         }
         return input.trim().replaceAll("[^a-zA-Z0-9-_]", "_");
+    }
+
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<StudyFileResponseDTO> searchFiles(FileSearchFilterDTO filter, Pageable pageable) {
+        Specification<StudyFile> spec = StudyFileSpecification.withFilters(filter);
+        Page<StudyFile> filePage = studyFileRepository.findAll(spec, pageable);
+
+        return filePage.map(this::mapToDTO);
+    }
+
+    private StudyFileResponseDTO mapToDTO(StudyFile file) {
+        return StudyFileResponseDTO.builder()
+                .id(file.getId())
+                .fileName(file.getFileName())
+                .fileType(file.getFileType())
+                .publicUrl(file.getPublicUrl())
+                .fileSizeBytes(file.getFileSizeBytes())
+                .avgRating(file.getAvgRating())
+                .totalRatings(file.getTotalRatings())
+                .reasoningId(file.getReasoning() != null ? file.getReasoning().getId() : null)
+                .reasoningTitle(file.getReasoning() != null ? file.getReasoning().getTitle() : null)
+                .categoryId(file.getReasoning() != null && file.getReasoning().getCategory() != null
+                        ? file.getReasoning().getCategory().getId() : null)
+                .categoryName(file.getReasoning() != null && file.getReasoning().getCategory() != null
+                        ? file.getReasoning().getCategory().getName() : null)
+                .hashtags(file.getHashtags().stream().map(Hashtag::getName).collect(Collectors.toSet()))
+                .uploadedAt(file.getUploadedAt())
+                .build();
     }
 }

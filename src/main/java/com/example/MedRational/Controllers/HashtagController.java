@@ -2,7 +2,7 @@ package com.example.MedRational.Controllers;
 
 import com.example.MedRational.DTOs.AttachHashtagsRequestDTO;
 import com.example.MedRational.DTOs.HashtagResponseDTO;
-import com.example.MedRational.Services.HashtagService;
+import com.example.MedRational.Services.Interfaces.HashtagService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

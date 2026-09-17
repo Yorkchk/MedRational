@@ -2,7 +2,8 @@ package com.example.MedRational.Controllers;
 
 import com.example.MedRational.DTOs.CategoryRequest;
 import com.example.MedRational.DTOs.CategoryResponse;
-import com.example.MedRational.Services.CategoryService;
+import com.example.MedRational.Services.Implementations.CategoryServiceImpl;
+import com.example.MedRational.Services.Interfaces.CategoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

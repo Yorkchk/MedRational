@@ -1,7 +1,8 @@
 package com.example.MedRational.Controllers;
 
 import com.example.MedRational.DTOs.DownloadableFile;
-import com.example.MedRational.Services.ExportDownloadService;
+import com.example.MedRational.Services.Implementations.ExportDownloadServiceImpl;
+import com.example.MedRational.Services.Interfaces.ExportDownloadService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
