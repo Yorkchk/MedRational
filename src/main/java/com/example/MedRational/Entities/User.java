@@ -19,11 +19,17 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, length = 255)
+    @Column(unique = true, nullable = false, length = 255)
     private String email;
 
     @Column(name = "password_hash", length = 255)
     private String passwordHash;
+
+    @Column(name = "full_name", length = 255)
+    private String fullName;
+
+    @Column(name = "phone_number", length = 50)
+    private String phoneNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
@@ -35,6 +41,10 @@ public class User {
 
     @Column(name = "otp_expiry")
     private LocalDateTime otpExpiry;
+
+    // Powers "Nouveauté": highlights files uploaded after this timestamp
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -6,6 +6,8 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "study_files")
@@ -34,6 +36,24 @@ public class StudyFile {
 
     @Column(name = "file_size_bytes")
     private Long fileSizeBytes;
+
+    // Precomputed rating metrics for high-speed reads
+    @Column(name = "avg_rating", nullable = false)
+    @Builder.Default
+    private Double avgRating = 0.0;
+
+    @Column(name = "total_ratings", nullable = false)
+    @Builder.Default
+    private Integer totalRatings = 0;
+
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(
+            name = "file_hashtags",
+            joinColumns = @JoinColumn(name = "file_id"),
+            inverseJoinColumns = @JoinColumn(name = "hashtag_id")
+    )
+    @Builder.Default
+    private Set<Hashtag> hashtags = new HashSet<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reasoning_id", nullable = false)
