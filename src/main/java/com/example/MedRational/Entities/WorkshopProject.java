@@ -59,4 +59,22 @@ public class WorkshopProject {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    // Add to com.example.MedRational.Entities.WorkshopProject
+
+    @Column(name = "opening_reminder_sent", nullable = false)
+    @Builder.Default
+    private boolean openingReminderSent = false;
+
+    @Column(name = "launch_notification_sent", nullable = false)
+    @Builder.Default
+    private boolean launchNotificationSent = false;
+
+    @Column(name = "closing_reminder_sent", nullable = false)
+    @Builder.Default
+    private boolean closingReminderSent = false;
+
+    @Column(name = "closed_notification_sent", nullable = false)
+    @Builder.Default
+    private boolean closedNotificationSent = false;
 }

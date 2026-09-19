@@ -1,8 +1,7 @@
 package com.example.MedRational.Repositories;
 
-import com.example.MedRational.Entities.enums.ProjectStatus;
-import com.example.MedRational.Entities.enums.ProjectType;
 import com.example.MedRational.Entities.WorkshopProject;
+import com.example.MedRational.Entities.enums.ProjectStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -20,21 +19,37 @@ public interface WorkshopProjectRepository extends JpaRepository<WorkshopProject
     @EntityGraph(attributePaths = {"attachments", "author"})
     Page<WorkshopProject> findByStatusOrderByRegistrationOpensAtAsc(ProjectStatus status, Pageable pageable);
 
-    Page<WorkshopProject> findByProjectTypeOrderByCreatedAtDesc(ProjectType projectType, Pageable pageable);
+    // 1. Exactly ~10 minutes before launch
+    @Query("""
+        SELECT p FROM WorkshopProject p 
+        WHERE p.status = 'UPCOMING' 
+          AND p.openingReminderSent = false 
+          AND p.registrationOpensAt <= :threshold
+    """)
+    List<WorkshopProject> findProjectsDueForOpeningReminder(@Param("threshold") LocalDateTime threshold);
 
-    // Schedulers: 10 minutes prior to opening (for student/admin notifications)
-    @Query("SELECT p FROM WorkshopProject p WHERE p.status = 'UPCOMING' AND p.registrationOpensAt BETWEEN :start AND :end")
-    List<WorkshopProject> findProjectsOpeningBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
-
-    // Schedulers: Countdown reaches 0 -> transition from UPCOMING to OPEN
-    @Query("SELECT p FROM WorkshopProject p WHERE p.status = 'UPCOMING' AND p.registrationOpensAt <= :now")
+    // 2. Launch moment (UPCOMING -> OPEN)
+    @Query("""
+        SELECT p FROM WorkshopProject p 
+        WHERE p.status = 'UPCOMING' 
+          AND p.registrationOpensAt <= :now
+    """)
     List<WorkshopProject> findProjectsReadyToOpen(@Param("now") LocalDateTime now);
 
-    // Schedulers: 10 minutes prior to deadline (reminder to close/last chance)
-    @Query("SELECT p FROM WorkshopProject p WHERE p.status = 'OPEN' AND p.registrationClosesAt BETWEEN :start AND :end")
-    List<WorkshopProject> findProjectsClosingBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    // 3. Exactly ~10 minutes before closing
+    @Query("""
+        SELECT p FROM WorkshopProject p 
+        WHERE p.status = 'OPEN' 
+          AND p.closingReminderSent = false 
+          AND p.registrationClosesAt <= :threshold
+    """)
+    List<WorkshopProject> findProjectsDueForClosingReminder(@Param("threshold") LocalDateTime threshold);
 
-    // Schedulers: Countdown reaches 0 -> transition from OPEN to CLOSED
-    @Query("SELECT p FROM WorkshopProject p WHERE p.status = 'OPEN' AND p.registrationClosesAt <= :now")
+    // 4. Closing moment (OPEN -> CLOSED)
+    @Query("""
+        SELECT p FROM WorkshopProject p 
+        WHERE p.status = 'OPEN' 
+          AND p.registrationClosesAt <= :now
+    """)
     List<WorkshopProject> findProjectsReadyToClose(@Param("now") LocalDateTime now);
 }

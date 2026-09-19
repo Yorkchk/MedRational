@@ -1,7 +1,7 @@
 package com.example.MedRational.Entities.enums;
 
 public enum NotifType {
-    PROJECT,
-    FILE,
-    GENERAL
+    WORKSHOP_REMINDER,
+    WORKSHOP_LAUNCH,
+    WORKSHOP_CLOSED
 }

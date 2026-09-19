@@ -11,6 +11,7 @@ import com.example.MedRational.Repositories.UserRepository;
 import com.example.MedRational.Repositories.WorkshopAttachmentRepository;
 import com.example.MedRational.Repositories.WorkshopProjectRepository;
 import com.example.MedRational.Services.Interfaces.R2StorageService;
+import com.example.MedRational.Services.Interfaces.WorkshopNotificationService;
 import com.example.MedRational.Services.Interfaces.WorkshopProjectService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
     private final WorkshopAttachmentRepository attachmentRepository;
     private final UserRepository userRepository;
     private final R2StorageService r2StorageService;
+    private final WorkshopNotificationService workshopNotificationService;
 
     @Override
     @Transactional
@@ -166,24 +168,46 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
         workshopProjectRepository.delete(project);
     }
 
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(fixedRate = 60000) // Runs every minute
     @Transactional
     @Override
     public void processAutomaticStateTransitions() {
         LocalDateTime now = LocalDateTime.now();
+        LocalDateTime tenMinutesFromNow = now.plusMinutes(10);
 
+        // 1. Check: 10 minutes BEFORE launch
+        List<WorkshopProject> openingSoon = workshopProjectRepository.findProjectsDueForOpeningReminder(tenMinutesFromNow);
+        for (WorkshopProject project : openingSoon) {
+            project.setOpeningReminderSent(true);
+            workshopNotificationService.notifyOpeningSoon(project);
+            log.info("Dispatched 10-min opening reminder for project ID {}", project.getId());
+        }
+
+        // 2. Check: Launch moment (UPCOMING -> OPEN)
         List<WorkshopProject> toOpen = workshopProjectRepository.findProjectsReadyToOpen(now);
         for (WorkshopProject project : toOpen) {
             project.setStatus(ProjectStatus.OPEN);
-            log.info("Project ID {} transitioned from UPCOMING to OPEN", project.getId());
+            project.setLaunchNotificationSent(true);
+            workshopNotificationService.notifyRegistrationOpened(project);
+            log.info("Project ID {} transitioned to OPEN and launch notifications sent", project.getId());
         }
 
+        // 3. Check: 10 minutes BEFORE closing
+        List<WorkshopProject> closingSoon = workshopProjectRepository.findProjectsDueForClosingReminder(tenMinutesFromNow);
+        for (WorkshopProject project : closingSoon) {
+            project.setClosingReminderSent(true);
+            workshopNotificationService.notifyClosingSoon(project);
+            log.info("Dispatched 10-min closing reminder for project ID {}", project.getId());
+        }
+
+        // 4. Check: Closing moment (OPEN -> CLOSED)
         List<WorkshopProject> toClose = workshopProjectRepository.findProjectsReadyToClose(now);
         for (WorkshopProject project : toClose) {
             project.setStatus(ProjectStatus.CLOSED);
-            log.info("Project ID {} transitioned from OPEN to CLOSED", project.getId());
-        }
-    }
+            project.setClosedNotificationSent(true);
+            workshopNotificationService.notifyRegistrationClosed(project);
+            log.info("Project ID {} transitioned to CLOSED and closed notifications sent", project.getId());
+        }}
 
     private WorkshopProjectResponseDTO mapToDTO(WorkshopProject project, boolean isAdmin) {
         List<WorkshopAttachmentResponseDTO> attachments = project.getAttachments() != null
