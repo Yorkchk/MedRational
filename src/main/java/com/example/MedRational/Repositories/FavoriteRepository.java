@@ -24,4 +24,15 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
     // Endpoint support: count total times a file has been favorited
     @Query("SELECT COUNT(f) FROM Favorite f WHERE f.file.id = :fileId")
     long countByFileId(@Param("fileId") Long fileId);
+
+    // Under com.example.MedRational.Repositories
+
+    @Query("""
+    SELECT f.file, COUNT(f) as favCount
+    FROM Favorite f
+    GROUP BY f.file.id
+    ORDER BY favCount DESC
+""")
+    Page<Object[]> findMostFavoritedFiles(Pageable pageable);
+
 }

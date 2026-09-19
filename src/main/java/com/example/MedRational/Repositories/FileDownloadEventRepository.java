@@ -16,4 +16,10 @@ public interface FileDownloadEventRepository extends JpaRepository<FileDownloadE
     // Total download events within a specific time period
     @Query("SELECT COUNT(e) FROM FileDownloadEvent e WHERE e.file.id = :fileId AND e.createdAt >= :since")
     long countRecentDownloadsByFileId(@Param("fileId") Long fileId, @Param("since") LocalDateTime since);
+
+    // Under com.example.MedRational.Repositories
+
+    @Query("SELECT COUNT(e) FROM FileDownloadEvent e WHERE e.createdAt >= :since")
+    long countDownloadsSince(@Param("since") LocalDateTime since);
+
 }

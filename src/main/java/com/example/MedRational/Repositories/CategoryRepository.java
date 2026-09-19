@@ -25,4 +25,29 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
     boolean existsByNameIgnoreCase(String name);
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 
+    // Under com.example.MedRational.Repositories
+
+    // 1. Category Demand: Aggregate downloads by category
+    @Query("""
+    SELECT c.name, COUNT(e)
+    FROM Category c
+    JOIN c.reasonings r
+    JOIN r.files f
+    JOIN FileDownloadEvent e ON e.file.id = f.id
+    GROUP BY c.id, c.name
+    ORDER BY COUNT(e) DESC
+""")
+    List<Object[]> findDownloadVolumeByCategory();
+
+    // 2. Storage Footprint: Total bytes per category
+    @Query("""
+    SELECT c.name, COALESCE(SUM(f.fileSizeBytes), 0L), COUNT(f)
+    FROM Category c
+    LEFT JOIN c.reasonings r
+    LEFT JOIN r.files f
+    GROUP BY c.id, c.name
+    ORDER BY SUM(f.fileSizeBytes) DESC
+""")
+    List<Object[]> findStorageUsageByCategory();
+
 }
