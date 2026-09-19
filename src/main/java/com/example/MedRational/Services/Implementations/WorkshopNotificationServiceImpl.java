@@ -4,6 +4,7 @@ import com.example.MedRational.Entities.Notification;
 import com.example.MedRational.Entities.User;
 import com.example.MedRational.Entities.WorkshopProject;
 import com.example.MedRational.Entities.enums.NotifType;
+import com.example.MedRational.Entities.enums.ProjectType;
 import com.example.MedRational.Repositories.NotificationRepository;
 import com.example.MedRational.Services.Interfaces.WorkshopNotificationService;
 import lombok.RequiredArgsConstructor;
@@ -24,21 +25,32 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
     @Override
     @Transactional
     public void notifyOpeningSoon(WorkshopProject project) {
-        String title = "Workshop Opening in 10 Minutes: " + project.getTitle();
-        String body = "Registration for '" + project.getTitle() + "' opens in 10 minutes. Get ready!";
+        boolean isFcfs = project.getProjectType() == ProjectType.FIRST_COME_FIRST_SERVED;
 
-        // 1. Broadcast notification to all users (user = null)
+        String title = isFcfs
+                ? "First-Come-First-Served Opening in 10 Min: " + project.getTitle()
+                : "Application Submissions Open in 10 Min: " + project.getTitle();
+
+        String body = isFcfs
+                ? "Spots are limited! Registration for '" + project.getTitle() + "' opens in 10 minutes."
+                : "Applications for '" + project.getTitle() + "' open in 10 minutes. Prepare your submission.";
+
         saveBroadcastNotification(title, body, project.getId(), NotifType.WORKSHOP_REMINDER);
-
-        // 2. Alert admin/author via email
         sendAuthorEmail(project, title, body);
     }
 
     @Override
     @Transactional
     public void notifyRegistrationOpened(WorkshopProject project) {
-        String title = "Registration is NOW OPEN: " + project.getTitle();
-        String body = "Registration is officially open for '" + project.getTitle() + "'. Secure your spot now!";
+        boolean isFcfs = project.getProjectType() == ProjectType.FIRST_COME_FIRST_SERVED;
+
+        String title = isFcfs
+                ? "Spots Available Now: " + project.getTitle()
+                : "Applications Are Open: " + project.getTitle();
+
+        String body = isFcfs
+                ? "First-come, first-served registration is officially OPEN for '" + project.getTitle() + "'! Secure your spot."
+                : "Submissions for '" + project.getTitle() + "' are now open. Complete your motivation submission before the deadline.";
 
         saveBroadcastNotification(title, body, project.getId(), NotifType.WORKSHOP_LAUNCH);
         sendAuthorEmail(project, title, body);
@@ -47,8 +59,15 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
     @Override
     @Transactional
     public void notifyClosingSoon(WorkshopProject project) {
-        String title = "10 Minutes Left to Register: " + project.getTitle();
-        String body = "Last chance! Registration for '" + project.getTitle() + "' closes in 10 minutes.";
+        boolean isFcfs = project.getProjectType() == ProjectType.FIRST_COME_FIRST_SERVED;
+
+        String title = isFcfs
+                ? "Registration Closing in 10 Min: " + project.getTitle()
+                : "Deadline Alert: 10 Minutes Left for " + project.getTitle();
+
+        String body = isFcfs
+                ? "Registration for '" + project.getTitle() + "' is wrapping up and closes in 10 minutes."
+                : "The application deadline for '" + project.getTitle() + "' is in 10 minutes. Submit your motivation form now.";
 
         saveBroadcastNotification(title, body, project.getId(), NotifType.WORKSHOP_REMINDER);
         sendAuthorEmail(project, title, body);
@@ -57,8 +76,15 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
     @Override
     @Transactional
     public void notifyRegistrationClosed(WorkshopProject project) {
-        String title = "Registration Closed: " + project.getTitle();
-        String body = "Registration for '" + project.getTitle() + "' is now closed.";
+        boolean isFcfs = project.getProjectType() == ProjectType.FIRST_COME_FIRST_SERVED;
+
+        String title = isFcfs
+                ? "Registration Closed: " + project.getTitle()
+                : "Applications Closed: " + project.getTitle();
+
+        String body = isFcfs
+                ? "Registration for '" + project.getTitle() + "' has ended."
+                : "Application period for '" + project.getTitle() + "' is now closed. Submissions are under review.";
 
         saveBroadcastNotification(title, body, project.getId(), NotifType.WORKSHOP_CLOSED);
         sendAuthorEmail(project, title, body);
@@ -66,7 +92,7 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
 
     private void saveBroadcastNotification(String title, String body, Long projectId, NotifType type) {
         Notification notification = Notification.builder()
-                .user(null) // null represents broadcast across all users
+                .user(null) // null = global broadcast
                 .title(title)
                 .body(body)
                 .type(type)

@@ -209,12 +209,14 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
             log.info("Project ID {} transitioned to CLOSED and closed notifications sent", project.getId());
         }}
 
+    // Inside com.example.MedRational.Services.Implementations.WorkshopProjectServiceImpl
+
     private WorkshopProjectResponseDTO mapToDTO(WorkshopProject project, boolean isAdmin) {
         List<WorkshopAttachmentResponseDTO> attachments = project.getAttachments() != null
                 ? project.getAttachments().stream().map(this::mapAttachmentToDTO).collect(Collectors.toList())
                 : List.of();
 
-        // Business rule: Hide form link if registration is not actively OPEN, unless viewing as admin
+        // The form link is strictly protected until registration/application is actively OPEN
         String visibleFormLink = (isAdmin || project.getStatus() == ProjectStatus.OPEN)
                 ? project.getFormLink()
                 : null;
