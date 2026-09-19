@@ -34,7 +34,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     @Builder.Default
-    private Role role = Role.ROLE_STUDENT;
+    private Role role = Role.ROLE_USER;
 
     @Column(name = "otp_code", length = 6)
     private String otpCode;
@@ -49,4 +49,6 @@ public class User {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+
 }

@@ -108,6 +108,8 @@ public class AuthServiceImpl implements AuthService {
         return "Verification code sent to " + user.getEmail();
     }
 
+    // Inside com.example.MedRational.Services.Implementations.AuthServiceImpl
+
     @Override
     @Transactional
     public UserAuthResponseDTO verifyUserOtp(UserVerifyOtpRequestDTO request) {
@@ -120,9 +122,12 @@ public class AuthServiceImpl implements AuthService {
         // Clear used OTP
         user.setOtpCode(null);
         user.setOtpExpiry(null);
+
+        // Update login timestamp
+        user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
-        // Issue JWT token with the user's role
+        // Issue JWT token
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
 
         return UserAuthResponseDTO.builder()

@@ -64,4 +64,10 @@ public interface StudyFileRepository extends JpaRepository<StudyFile, Long>, Jpa
     )
 """)
     long countColdFilesWithoutDownloads();
+
+    // Inside com.example.MedRational.Repositories.StudyFileRepository
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"reasoning", "reasoning.category", "hashtags"})
+    @org.springframework.data.jpa.repository.Query("SELECT f FROM StudyFile f ORDER BY f.uploadedAt DESC")
+    Page<StudyFile> findAllFilesForNovelties(Pageable pageable);
 }
