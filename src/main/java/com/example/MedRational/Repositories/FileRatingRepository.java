@@ -13,9 +13,13 @@ public interface FileRatingRepository extends JpaRepository<FileRating, Long> {
 
     Optional<FileRating> findByUserIdAndFileId(Long userId, Long fileId);
 
-    @Query("SELECT AVG(r.score) FROM FileRating r WHERE r.file.id = :fileId")
-    Double calculateAverageRating(@Param("fileId") Long fileId);
+    boolean existsByUserIdAndFileId(Long userId, Long fileId);
 
-    @Query("SELECT COUNT(r) FROM FileRating r WHERE r.file.id = :fileId")
-    Integer countRatingsByFileId(@Param("fileId") Long fileId);
+    // Compute average score and total count for a given file
+    @Query("""
+        SELECT COALESCE(AVG(r.score), 0.0), COUNT(r)
+        FROM FileRating r
+        WHERE r.file.id = :fileId
+    """)
+    Object[] getRatingStatsByFileId(@Param("fileId") Long fileId);
 }
