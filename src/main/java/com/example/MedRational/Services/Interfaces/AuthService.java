@@ -1,9 +1,6 @@
 package com.example.MedRational.Services.Interfaces;
 
-import com.example.MedRational.DTOs.AuthResponse;
-import com.example.MedRational.DTOs.CreateAdminRequest;
-import com.example.MedRational.DTOs.LoginRequest;
-import com.example.MedRational.DTOs.VerifyOtpRequest;
+import com.example.MedRational.DTOs.*;
 
 public interface AuthService {
 
@@ -12,4 +9,12 @@ public interface AuthService {
     String initiateAdminLogin(LoginRequest request);
 
     AuthResponse verifyOtp(VerifyOtpRequest request);
+
+    // --- Normal User (Non-Admin) Flows ---
+    // Initiates registration or login: saves user as non-admin, generates and emails OTP
+    String initiateUserAuth(UserRegisterRequestDTO request);
+
+    // Verifies OTP and returns JWT token + user details
+    UserAuthResponseDTO verifyUserOtp(UserVerifyOtpRequestDTO request);
+
 }
