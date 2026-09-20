@@ -9,6 +9,7 @@ import com.example.MedRational.Services.Interfaces.AuthService;
 import com.example.MedRational.Services.Interfaces.EmailService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,37 +46,64 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public String initiateAdminLogin(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new EntityNotFoundException("Invalid credentials"));
+    public String initiateLogin(LoginRequest request) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
 
-        if (user.getRole() != Role.ROLE_ADMIN || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid email or password.");
+        // 1. Look up user by email (regardless of whether they are ADMIN or USER)
+        User user = userRepository.findByEmail(cleanEmail)
+                .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+
+        // 2. Validate password
+        if (user.getPasswordHash() == null ||
+                !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid email or password");
         }
 
+        // 3. Generate 6-digit OTP
         String otp = String.format("%06d", new SecureRandom().nextInt(999999));
         user.setOtpCode(otp);
         user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
         userRepository.save(user);
 
+        // 4. Send email
         emailService.sendOtpEmail(user.getEmail(), otp);
-        return "OTP verification code sent to " + user.getEmail();
+
+        return "Verification code sent to " + user.getEmail();
     }
 
     @Override
     @Transactional
     public AuthResponse verifyOtp(VerifyOtpRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        String cleanEmail = request.getEmail().trim().toLowerCase();
 
-        validateOtp(user, request.getCode());
+        User user = userRepository.findByEmail(cleanEmail)
+                .orElseThrow(() -> new BadCredentialsException("User not found"));
 
+        if (user.getOtpCode() == null || !user.getOtpCode().equals(request.getCode().trim())) {
+            throw new BadCredentialsException("Invalid verification code");
+        }
+
+        if (user.getOtpExpiry().isBefore(LocalDateTime.now())) {
+            throw new BadCredentialsException("Verification code has expired");
+        }
+
+        // Clear OTP once used
         user.setOtpCode(null);
         user.setOtpExpiry(null);
+        user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
+        // Generate token with user details and their actual role (ROLE_ADMIN or ROLE_USER)
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
-        return new AuthResponse(token, "Authentication successful");
+
+        return AuthResponse.builder()
+                .token(token)
+                .role(user.getRole().name())
+                .userId(user.getId())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .message("Authentication successful")
+                .build();
     }
 
     // --- Regular User Endpoints ---
@@ -91,11 +119,21 @@ public class AuthServiceImpl implements AuthService {
                 .orElseGet(() -> User.builder()
                         .email(cleanEmail)
                         .fullName(cleanFullName)
-                        .role(Role.ROLE_USER) // Non-admin role
+                        .role(Role.ROLE_USER)
                         .build());
 
-        // Update full name if changed
+        // Update profile info
         user.setFullName(cleanFullName);
+
+        // 1. Save phone number if provided
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank()) {
+            user.setPhoneNumber(request.getPhoneNumber().trim());
+        }
+
+        // 2. Hash and save the password
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        }
 
         // Generate 6-digit OTP valid for 5 minutes
         String otp = String.format("%06d", new SecureRandom().nextInt(999999));

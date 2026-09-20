@@ -6,7 +6,7 @@ public interface AuthService {
 
     String createAdmin(CreateAdminRequest request);
 
-    String initiateAdminLogin(LoginRequest request);
+    String initiateLogin(LoginRequest request);
 
     AuthResponse verifyOtp(VerifyOtpRequest request);
 

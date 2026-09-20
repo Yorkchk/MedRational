@@ -8,7 +8,6 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class UserRegisterRequestDTO {
 
     @NotBlank(message = "Full name is required")
@@ -17,4 +16,9 @@ public class UserRegisterRequestDTO {
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
     private String email;
+
+    @NotBlank(message = "Password is required")
+    private String password;
+
+    private String phoneNumber;
 }
