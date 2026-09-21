@@ -16,5 +16,6 @@ public interface AuthService {
 
     // Verifies OTP and returns JWT token + user details
     UserAuthResponseDTO verifyUserOtp(UserVerifyOtpRequestDTO request);
-
+    String initiatePasswordReset(ForgotPasswordRequest request);
+    String resetPassword(ResetPasswordRequest request);
 }

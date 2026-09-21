@@ -178,6 +178,55 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 
+    @Override
+    @Transactional
+    public String initiatePasswordReset(ForgotPasswordRequest request) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+
+        User user = userRepository.findByEmail(cleanEmail)
+                .orElseThrow(() -> new IllegalArgumentException("No account registered with this email."));
+
+        // Generate 6-digit OTP valid for 5 minutes
+        String otp = String.format("%06d", new SecureRandom().nextInt(999999));
+        user.setOtpCode(otp);
+        user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
+        userRepository.save(user);
+
+        // Send code to user's email
+        emailService.sendOtpEmail(user.getEmail(), otp);
+
+        return "Password reset code sent to " + user.getEmail();
+    }
+
+    @Override
+    @Transactional
+    public String resetPassword(ResetPasswordRequest request) {
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+
+        User user = userRepository.findByEmail(cleanEmail)
+                .orElseThrow(() -> new IllegalArgumentException("No account found with this email."));
+
+        if (user.getOtpCode() == null || user.getOtpExpiry() == null) {
+            throw new IllegalArgumentException("No active password reset request found.");
+        }
+
+        if (LocalDateTime.now().isAfter(user.getOtpExpiry())) {
+            throw new IllegalArgumentException("Reset code has expired. Please request a new one.");
+        }
+
+        if (!user.getOtpCode().equals(request.getCode().trim())) {
+            throw new IllegalArgumentException("Invalid verification code.");
+        }
+
+        // Set new hashed password & clear OTP
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setOtpCode(null);
+        user.setOtpExpiry(null);
+        userRepository.save(user);
+
+        return "Password updated successfully. You can now log in.";
+    }
+
     private void validateOtp(User user, String providedCode) {
         if (user.getOtpCode() == null || user.getOtpExpiry() == null) {
             throw new IllegalArgumentException("No pending verification request found.");
@@ -191,4 +240,6 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Invalid verification code.");
         }
     }
+
+
 }

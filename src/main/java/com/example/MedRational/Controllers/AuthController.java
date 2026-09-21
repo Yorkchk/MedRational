@@ -51,4 +51,18 @@ public class AuthController {
             @Valid @RequestBody UserVerifyOtpRequestDTO request) {
         return ResponseEntity.ok(authService.verifyUserOtp(request));
     }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<AuthMessageResponse> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+        String msg = authService.initiatePasswordReset(request);
+        return ResponseEntity.ok(new AuthMessageResponse(msg));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<AuthMessageResponse> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request) {
+        String msg = authService.resetPassword(request);
+        return ResponseEntity.ok(new AuthMessageResponse(msg));
+    }
 }
