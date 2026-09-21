@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 import com.example.MedRational.DTOs.FileSearchFilterDTO;
 import com.example.MedRational.DTOs.StudyFileResponseDTO;
 import com.example.MedRational.Entities.Hashtag;
-import com.example.MedRational.Specifications.StudyFileSpecification;
+import com.example.MedRational.Specifications.StudyFileSpecifications;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -96,7 +96,7 @@ public class StudyFileServiceImpl implements StudyFileService {
     @Override
     @Transactional(readOnly = true)
     public Page<StudyFileResponseDTO> searchFiles(FileSearchFilterDTO filter, Pageable pageable) {
-        Specification<StudyFile> spec = StudyFileSpecification.withFilters(filter);
+        Specification<StudyFile> spec = StudyFileSpecifications.withFilters(filter);
         Page<StudyFile> filePage = studyFileRepository.findAll(spec, pageable);
 
         return filePage.map(this::mapToDTO);
