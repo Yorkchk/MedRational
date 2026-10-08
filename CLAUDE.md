@@ -40,3 +40,7 @@ Layered packages under `com.example.MedRational` (note the capitalized package n
 - Login is two-step: credentials → 6-digit OTP emailed (5-minute expiry, stored on `User`) → `verify-otp` returns the JWT. User registration and forgot-password use the same OTP mechanism.
 - URL-level rules live in `Security/SecurityConfig`: `/api/v1/auth/**` is public; GETs on categories/reasonings/files/downloads are public; writes to those are `ROLE_ADMIN`; everything else requires authentication. When adding endpoints, update this matcher list.
 - Some controllers (`AnalyticsController`, `HashtagController`, `SuggestionController`) use `@PreAuthorize`, but **`@EnableMethodSecurity` is not declared anywhere**, so those annotations are currently not enforced.
+
+## Git workflow
+
+`main` is protected: changes go through short-lived branches (`feat/…`, `fix/…`, `chore/…`, `docs/…`) and pull requests that must pass `.github/workflows/backend-ci.yml` (`./mvnw -B verify` against a PostgreSQL service container with dummy env values). PRs are squash-merged, so PR titles use Conventional Commits (`feat(favorites): …`). Record user-facing changes under `[Unreleased]` in `CHANGELOG.md`. When adding a new required env var, also add it to `.env.example` and the CI workflow's `env` block.
