@@ -367,10 +367,10 @@ jobs:                                 # one or more jobs; each gets a FRESH virt
     runs-on: ubuntu-latest            # the machine type (Linux is cheapest and fastest)
 
     steps:                            # run in order; the first failure stops the job ❌
-      - uses: actions/checkout@v5     # "uses" = a published, reusable action
+      - uses: actions/checkout@v7     # "uses" = a published, reusable action
                                       #   checkout = download your repo onto the machine
 
-      - uses: actions/setup-java@v5   # install a tool
+      - uses: actions/setup-java@v6   # install a tool
         with:                         # "with" = inputs for that action
           distribution: temurin
           java-version: 21
@@ -384,7 +384,7 @@ jobs:                                 # one or more jobs; each gets a FRESH virt
 Key ideas:
 - **Every run starts from a blank machine.** Nothing from your laptop exists there: no `.env`, no `local.properties`, no database.
 - **`uses:` vs `run:`.** `uses:` runs someone else's packaged step; `run:` runs your own shell commands.
-- **Pin major versions** (`@v5`). Dependabot (with `github-actions` enabled) bumps them for you.
+- **Pin major versions** (`@v7`, not `@main` or an exact `@v7.0.1`). Dependabot (with `github-actions` enabled) opens a PR when a new major version comes out.
 - **A step fails if its command exits with a non-zero code.** Every build tool does that when a test or the compiler fails.
 
 ### 6.2 Ready-to-use templates
@@ -400,12 +400,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with: { distribution: temurin, java-version: 17 }
-      - uses: gradle/actions/setup-gradle@v5        # caches Gradle between runs
+      - uses: gradle/actions/setup-gradle@v6        # caches Gradle between runs
       - run: chmod +x gradlew && ./gradlew lint testDebugUnitTest assembleDebug
-      - uses: actions/upload-artifact@v5            # keep the lint report, downloadable
+      - uses: actions/upload-artifact@v6            # keep the lint report, downloadable
         if: always()                                # even if a step above failed
         with:
           name: lint-report
@@ -435,8 +435,8 @@ jobs:
       DB_PASSWORD: postgres
       JWT_SECRET: ci-only-dummy-secret-that-is-at-least-32-bytes-long
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with: { distribution: temurin, java-version: 21, cache: maven }
       - run: chmod +x mvnw && ./mvnw -B verify
 ```
@@ -452,7 +452,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with: { node-version: 22, cache: npm }
       - run: npm ci
@@ -472,14 +472,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with: { python-version: "3.13", cache: pip }
       - run: pip install -r requirements.txt
       - run: pytest
 ```
 
-The version numbers above (`@v5`, `@v6`) are current as of late 2026. Dependabot keeps them up to date.
+The `checkout`, `setup-java`, `setup-gradle`, and `upload-artifact` versions above match what Dependabot proposed in October 2026. For `setup-node` and `setup-python`, check each action's GitHub releases page when you start. Either way, enable Dependabot's `github-actions` updates and let it keep them current; don't trust version numbers in a guide (including this one) over Dependabot.
 
 ### 6.3 Real secrets in CI (when you need them)
 

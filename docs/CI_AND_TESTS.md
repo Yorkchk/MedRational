@@ -471,7 +471,7 @@ The first Android run page showed these **annotations**. None failed the build, 
 
 | Annotation | Meaning | Action |
 |---|---|---|
-| "Node.js 20 is deprecated… actions/checkout@v4, actions/setup-java@v4, actions/upload-artifact@v4, gradle/actions/setup-gradle@v4 are being forced to run on Node.js 24" | These action versions are old | Bump to `@v5` (`checkout`, `setup-java`, `upload-artifact`, `setup-gradle`). Dependabot's `github-actions` updates will propose this automatically after merge. |
+| "Node.js 20 is deprecated… actions/checkout@v4, actions/setup-java@v4, actions/upload-artifact@v4, gradle/actions/setup-gradle@v4 are being forced to run on Node.js 24" | These action versions are old | Merge the Dependabot PRs that bump them: `actions/checkout` → v7, `actions/setup-java` → v6, `actions/upload-artifact` → v6, `gradle/actions` → v6 (opened automatically on 2026-10-08). |
 | "setup-java v4 is deprecated… migrate to actions/setup-java@v5" | Same as above | Same. |
 | "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026" | The runner OS image changes soon | Usually nothing to do. If something breaks around that date, pin `runs-on: ubuntu-24.04` temporarily. |
 
@@ -723,7 +723,7 @@ Ordered from most to least valuable for this project:
 | Improvement | How | Benefit |
 |---|---|---|
 | Require CI to pass before merge | Ruleset on `main` (§8) | CI stops being optional |
-| Bump action versions to v5 | Merge the Dependabot PRs, or edit the YAML | Removes deprecation warnings |
+| Bump action versions | Merge the Dependabot `github-actions` PRs | Removes deprecation warnings |
 | Lint baseline | `./gradlew updateLintBaseline` + `baseline = file(...)` | Fail only on **new** lint issues |
 | Upload test reports | Another `actions/upload-artifact` step for `app/build/reports/tests/` and `target/surefire-reports/` | Read failures without re-running locally |
 | Code coverage | **JaCoCo** (Maven plugin `jacoco-maven-plugin`; Android `jacoco` or **Kover**) with a minimum threshold in `verify` | Shows which code no test touches |
