@@ -1,0 +1,54 @@
+name: Backend CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # Throwaway database so the Spring context test can boot
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # CI-only dummy values; real secrets live in the developer's .env
+    env:
+      SUPABASE_DB_HOST: localhost
+      SUPABASE_DB_PORT: 5432
+      SUPABASE_DB_DATABASE: postgres
+      SUPABASE_DB_USERNAME: postgres
+      SUPABASE_DB_PASSWORD: postgres
+      JWT_SECRET: ci-only-dummy-secret-that-is-at-least-32-bytes-long
+      CLOUDFLARE_ACCOUNT_ID: ci-dummy
+      CLOUDFLARE_ACCESS_KEY_ID: ci-dummy
+      CLOUDFLARE_SECRET_ACCESS_KEY: ci-dummy
+      MAIL_HOST: localhost
+      MAIL_PORT: 587
+      MAIL_USERNAME: ci-dummy
+      MAIL_PASSWORD: ci-dummy
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Build and test
+        run: |
+          chmod +x mvnw
+          ./mvnw -B verify
