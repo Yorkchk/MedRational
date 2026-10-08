@@ -2,6 +2,7 @@ package com.example.MedRational.Controllers;
 
 import com.example.MedRational.DTOs.FavoriteResponseDTO;
 import com.example.MedRational.Services.Interfaces.FavoriteService;
+import com.example.MedRational.Security.CurrentUserGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,12 +19,14 @@ import java.util.Map;
 public class FavoriteController {
 
     private final FavoriteService favoriteService;
+    private final CurrentUserGuard currentUserGuard;
 
     // Toggle favorite state (convenient single button on UI)
     @PostMapping("/users/{userId}/favorites/{fileId}/toggle")
     public ResponseEntity<Map<String, Object>> toggleFavorite(
             @PathVariable Long userId,
             @PathVariable Long fileId) {
+        currentUserGuard.requireSelf(userId);
         boolean isFavorited = favoriteService.toggleFavorite(userId, fileId);
         return ResponseEntity.ok(Map.of(
                 "fileId", fileId,
@@ -37,6 +40,7 @@ public class FavoriteController {
     public ResponseEntity<FavoriteResponseDTO> addFavorite(
             @PathVariable Long userId,
             @PathVariable Long fileId) {
+        currentUserGuard.requireSelf(userId);
         return ResponseEntity.ok(favoriteService.addFavorite(userId, fileId));
     }
 
@@ -45,6 +49,7 @@ public class FavoriteController {
     public ResponseEntity<Void> removeFavorite(
             @PathVariable Long userId,
             @PathVariable Long fileId) {
+        currentUserGuard.requireSelf(userId);
         favoriteService.removeFavorite(userId, fileId);
         return ResponseEntity.noContent().build();
     }
@@ -54,6 +59,7 @@ public class FavoriteController {
     public ResponseEntity<Page<FavoriteResponseDTO>> getUserFavorites(
             @PathVariable Long userId,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        currentUserGuard.requireSelf(userId);
         return ResponseEntity.ok(favoriteService.getFavoritesByUserId(userId, pageable));
     }
 
@@ -62,6 +68,7 @@ public class FavoriteController {
     public ResponseEntity<Map<String, Boolean>> isFileFavorited(
             @PathVariable Long userId,
             @PathVariable Long fileId) {
+        currentUserGuard.requireSelf(userId);
         return ResponseEntity.ok(Map.of("isFavorited", favoriteService.isFileFavoritedByUser(userId, fileId)));
     }
 
