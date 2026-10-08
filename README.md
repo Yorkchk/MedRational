@@ -85,6 +85,11 @@ The test suite boots the full Spring context, so it needs a reachable PostgreSQL
 
 `main` is protected and always releasable. Work happens on short-lived branches (`feat/…`, `fix/…`, `chore/…`) merged through pull requests once CI passes. Commit messages and PR titles follow [Conventional Commits](https://www.conventionalcommits.org/). See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
+## Documentation
+
+- [CI and tests](docs/CI_AND_TESTS.md): what runs on every pull request, what it checks, how to read failures, and how to add tests.
+- [GitHub repository setup guide](docs/GITHUB_REPO_SETUP.md): the branching, PR, CI, and release workflow this repo follows.
+
 ## License
 
 [MIT](LICENSE)
