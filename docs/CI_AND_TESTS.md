@@ -15,7 +15,7 @@ What happens automatically every time you open or update a pull request in **Med
 5. [Reading results and debugging failures](#5-reading-results-and-debugging-failures)
 6. [Running the exact CI checks locally](#6-running-the-exact-ci-checks-locally)
 7. [Dependabot: automatic update PRs](#7-dependabot-automatic-update-prs)
-8. [Making CI actually block bad merges](#8-making-ci-actually-block-bad-merges)
+8. [CI blocks bad merges](#8-ci-blocks-bad-merges)
 9. [Warnings from the first runs (to do)](#9-warnings-from-the-first-runs-to-do)
 10. [Writing your first real tests](#10-writing-your-first-real-tests)
 11. [Where to go next](#11-where-to-go-next)
@@ -444,24 +444,58 @@ To run a single test class: `.\mvnw.cmd test -Dtest=MedRationalApplicationTests`
 
 ## 7. Dependabot: automatic update PRs
 
-Both repos have `.github/dependabot.yml`, which takes effect once merged into `main`. Every week Dependabot checks:
+Both repos have `.github/dependabot.yml`. Every week Dependabot checks:
 - **Android:** Gradle dependencies (`build.gradle.kts`, `libs.versions.toml`) and GitHub Actions versions.
 - **Backend:** Maven dependencies (`pom.xml`) and GitHub Actions versions.
 
-For each outdated dependency it opens a PR like `Bump com.squareup.retrofit2:retrofit from 2.11.0 to 2.12.0` (at most 5 open at once per ecosystem). **CI runs on each of those PRs**, and that's the point of having both:
+### 7.1 How updates are grouped
+
+| Update type | Example | What Dependabot opens | What you do |
+|---|---|---|---|
+| **Minor and patch** | `2.11.0 → 2.12.0`, `2.11.0 → 2.11.1` | **One grouped PR per ecosystem**, e.g. "Bump the gradle-minor-and-patch group with 6 updates" (plus one for GitHub Actions) | CI green → skim the release notes in the PR description → squash-merge. |
+| **Major** | `2.11.0 → 3.0.0`, `actions/checkout v4 → v7` | **One PR per dependency**, never grouped | Read the migration notes, test locally, merge manually, or close it if you're not ready. |
+
+Nothing is auto-merged. Every update needs a click from you, and the ruleset (§8) makes that click impossible while CI is red.
+
+This is configured with `groups:` in `dependabot.yml`:
+
+```yaml
+groups:
+  gradle-minor-and-patch:              # maven-minor-and-patch in the backend
+    update-types: ["minor", "patch"]   # majors are left out on purpose, so they get their own PRs
+```
+
+### 7.2 Handling a Dependabot PR
 
 - ✅ **Green:** read the linked release notes for anything alarming, then squash-merge.
 - ❌ **Red:** the update breaks something. Either fix it on the Dependabot branch (you can push commits to it) or close the PR. Closing it makes Dependabot skip that version.
+- **Updates that must move together** (e.g. `retrofit` + `converter-gson`, or the three `jjwt-*` libraries): grouping handles this for minor and patch updates. For major updates, merge the related PRs back to back, or make one manual PR that bumps all of them.
 
-Expect a burst of PRs the first week (your lint report already shows 24 outdated dependencies), then a trickle.
+Useful comments on a Dependabot PR: `@dependabot rebase`, `@dependabot recreate`, `@dependabot ignore this major version`, `@dependabot ignore this dependency`.
+
+To run a check right away instead of waiting a week, open the repo's **Insights → Dependency graph → Dependabot** tab and click **Check for updates**.
 
 ---
 
-## 8. Making CI actually block bad merges
+## 8. CI blocks bad merges
 
-Right now CI is **advisory**: a red ❌ shows on the PR, but GitHub still lets you click merge. To make it **mandatory**, add a ruleset on `main` with "Require status checks to pass → `build`". The step-by-step instructions are in [GITHUB_REPO_SETUP.md §7.1](GITHUB_REPO_SETUP.md#71-protect-main-rulesets).
+Each repo has a ruleset on `main` (**Settings → Rules → Rulesets**):
 
-**MedRational-Android is private.** On a free GitHub account, rulesets and branch protection are only available for **public** repositories. Either make the repo public (good for a portfolio, after a secret check; the history was already checked and contains no secrets) or upgrade to GitHub Pro. The backend repo is public, so this works there today.
+| Rule | Effect |
+|---|---|
+| **Require status checks to pass: `build`** (from GitHub Actions) | A PR can't be merged while the CI job is failing or still running. Direct pushes to `main` are rejected too, because a new commit has no passing check yet. |
+| **Restrict deletions** | `main` can't be deleted. |
+| **Block force pushes** | `main`'s history can't be rewritten. |
+
+The bypass list is empty, so **the rules apply to admins too**, you included.
+
+**Not enabled (by choice):**
+- **"Require branches to be up to date before merging"**: if on, a PR must be rebased onto the latest `main` and re-run CI before merging. It's safer for busy teams, but it makes every merge force the other open PRs, Dependabot's included, to update and re-run first. You can turn it on later in the ruleset ("Require status checks to pass" → "Require branches to be up to date").
+- **"Require a pull request before merging"**: the status-check rule already blocks direct pushes in practice. Add it if you want PRs to be explicitly mandatory.
+
+### Testing policy
+
+Every new feature or behavior change ships **with tests in the same PR**, and every bug fix includes a **regression test** that fails without the fix. The PR template has a checklist item for this. Because CI must pass before merging, those tests then protect the feature on every future PR. §10 has the patterns to start from.
 
 ---
 
@@ -722,7 +756,6 @@ Ordered from most to least valuable for this project:
 
 | Improvement | How | Benefit |
 |---|---|---|
-| Require CI to pass before merge | Ruleset on `main` (§8) | CI stops being optional |
 | Bump action versions | Merge the Dependabot `github-actions` PRs | Removes deprecation warnings |
 | Lint baseline | `./gradlew updateLintBaseline` + `baseline = file(...)` | Fail only on **new** lint issues |
 | Upload test reports | Another `actions/upload-artifact` step for `app/build/reports/tests/` and `target/surefire-reports/` | Read failures without re-running locally |
