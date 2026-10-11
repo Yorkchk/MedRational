@@ -49,6 +49,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/v1/reasonings/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/reasonings/**").hasAuthority("ROLE_ADMIN")
 
+                        // Any signed-in user may rate files; must come before the admin-only /files/** rules
+                        .requestMatchers(HttpMethod.POST, "/api/v1/files/*/ratings").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/files/*/ratings").authenticated()
+
                         .requestMatchers(HttpMethod.POST, "/api/v1/files/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/files/**").hasAuthority("ROLE_ADMIN")
 

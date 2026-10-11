@@ -6,6 +6,7 @@ import com.example.MedRational.Entities.Category;
 import com.example.MedRational.Entities.Reasoning;
 import com.example.MedRational.Entities.StudyFile;
 import com.example.MedRational.Repositories.CategoryRepository;
+import com.example.MedRational.Repositories.FileRatingRepository;
 import com.example.MedRational.Repositories.ReasoningRepository;
 import com.example.MedRational.Services.Interfaces.ReasoningService;
 import jakarta.persistence.EntityNotFoundException;
@@ -24,6 +25,7 @@ public class ReasoningServiceImpl implements ReasoningService {
     private final CategoryRepository categoryRepository;
     private final MappingServiceImpl mappingService;
     private final R2StorageServiceImpl r2StorageService;
+    private final FileRatingRepository fileRatingRepository;
 
     @Transactional(readOnly = true)
     public List<ReasoningResponse> getReasoningsByCategory(Long categoryId) {
@@ -86,7 +88,8 @@ public class ReasoningServiceImpl implements ReasoningService {
             r2StorageService.deleteFiles(keysToDelete);
         }
 
-        // 2. Delete database row (cascades to study_files in Supabase)
+        // 2. Delete database row (cascades to study_files in Supabase; file_ratings doesn't cascade)
+        fileRatingRepository.deleteAllByReasoningId(id);
         reasoningRepository.delete(reasoning);
     }
 }
