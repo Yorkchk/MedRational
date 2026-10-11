@@ -3,6 +3,7 @@ package com.example.MedRational.DTOs;
 import com.example.MedRational.Entities.enums.ProjectType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -24,6 +25,10 @@ public class CreateWorkshopProjectDTO {
     private ProjectType projectType;
 
     private String formLink;
+
+    // Optional; null means no limit
+    @Positive(message = "Capacity must be positive")
+    private Integer capacity;
 
     @NotNull(message = "Registration opening timestamp is required")
     private LocalDateTime registrationOpensAt;
