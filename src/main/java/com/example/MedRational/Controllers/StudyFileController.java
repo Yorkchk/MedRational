@@ -40,12 +40,12 @@ public class StudyFileController {
         return ResponseEntity.ok(studyFileService.getFilesByReasoning(reasoningId));
     }
 
-    // Public / Student: Inline PDF rendition of a file (PDF as-is; DOCX/PPTX/XLSX converted and cached)
+    // Public / Student: Inline rendition of a file (PDF and images as-is; DOCX/PPTX/XLSX converted to PDF and cached)
     @GetMapping("/{id}/preview")
     public ResponseEntity<Resource> previewFile(@PathVariable Long id) {
         DownloadableFile preview = filePreviewService.getPreview(id);
         return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
+                .contentType(MediaType.parseMediaType(preview.getContentType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
                         .filename(preview.getFileName(), StandardCharsets.UTF_8).build().toString())
                 .cacheControl(CacheControl.maxAge(Duration.ofHours(1)).cachePrivate())
