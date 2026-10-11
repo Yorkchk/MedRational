@@ -12,6 +12,7 @@ public class StudyFileResponse {
     private String fileName;
     private String fileType;
     private String publicUrl;
+    private boolean previewable;
     private Long fileSizeBytes;
     private LocalDateTime uploadedAt;
 }

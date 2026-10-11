@@ -46,6 +46,16 @@ public class R2StorageServiceImpl implements R2StorageService {
         return storageKey;
     }
 
+    public void uploadBytes(String storageKey, byte[] data, String contentType) {
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(cloudflareProperties.getBucketName())
+                .key(storageKey)
+                .contentType(contentType)
+                .build();
+
+        s3Client.putObject(putObjectRequest, RequestBody.fromBytes(data));
+    }
+
     public Resource downloadFileAsResource(String storageKey) {
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(cloudflareProperties.getBucketName())

@@ -1,5 +1,6 @@
 package com.example.MedRational.Services.Implementations;
 
+import com.example.MedRational.Preview.PreviewKind;
 import com.example.MedRational.DTOs.StudyFileResponse;
 import com.example.MedRational.Entities.Reasoning;
 import com.example.MedRational.Entities.StudyFile;
@@ -82,6 +83,9 @@ public class StudyFileServiceImpl implements StudyFileService {
                 .orElseThrow(() -> new EntityNotFoundException("File not found with ID: " + fileId));
 
         r2StorageService.deleteFile(studyFile.getStorageKey());
+        if (studyFile.getPreviewStorageKey() != null) {
+            r2StorageService.deleteFile(studyFile.getPreviewStorageKey());
+        }
         studyFileRepository.delete(studyFile);
     }
 
@@ -108,6 +112,7 @@ public class StudyFileServiceImpl implements StudyFileService {
                 .fileName(file.getFileName())
                 .fileType(file.getFileType())
                 .publicUrl(file.getPublicUrl())
+                .previewable(PreviewKind.detect(file.getFileName(), file.getFileType()).isPreviewable())
                 .fileSizeBytes(file.getFileSizeBytes())
                 .avgRating(file.getAvgRating())
                 .totalRatings(file.getTotalRatings())

@@ -77,7 +77,8 @@ public class ReasoningServiceImpl implements ReasoningService {
 
         // Extract all R2 storage keys
         List<String> keysToDelete = reasoning.getFiles().stream()
-                .map(StudyFile::getStorageKey)
+                .flatMap(f -> java.util.stream.Stream.of(f.getStorageKey(), f.getPreviewStorageKey()))
+                .filter(java.util.Objects::nonNull)
                 .toList();
 
         // 1. Delete all assets from Cloudflare R2

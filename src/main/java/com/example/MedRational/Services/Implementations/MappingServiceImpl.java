@@ -1,5 +1,6 @@
 package com.example.MedRational.Services.Implementations;
 
+import com.example.MedRational.Preview.PreviewKind;
 import com.example.MedRational.DTOs.CategoryResponse;
 import com.example.MedRational.DTOs.ReasoningResponse;
 import com.example.MedRational.DTOs.StudyFileResponse;
@@ -46,6 +47,7 @@ public class MappingServiceImpl {
                 .fileName(file.getFileName())
                 .fileType(file.getFileType())
                 .publicUrl(file.getPublicUrl())
+                .previewable(PreviewKind.detect(file.getFileName(), file.getFileType()).isPreviewable())
                 .fileSizeBytes(file.getFileSizeBytes())
                 .uploadedAt(file.getUploadedAt())
                 .build();

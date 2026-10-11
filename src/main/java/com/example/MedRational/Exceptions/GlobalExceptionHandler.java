@@ -30,6 +30,16 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.PAYLOAD_TOO_LARGE, "File size exceeds the maximum permitted limit.");
     }
 
+    @ExceptionHandler(UnsupportedMediaTypeException.class)
+    public ResponseEntity<Map<String, Object>> handleUnsupportedMediaType(UnsupportedMediaTypeException ex) {
+        return buildResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE, ex.getMessage());
+    }
+
+    @ExceptionHandler(PreviewUnavailableException.class)
+    public ResponseEntity<Map<String, Object>> handlePreviewUnavailable(PreviewUnavailableException ex) {
+        return buildResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, Object> response = new HashMap<>();

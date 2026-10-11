@@ -3,7 +3,13 @@ package com.example.MedRational.Controllers;
 import com.example.MedRational.DTOs.FileSearchFilterDTO;
 import com.example.MedRational.DTOs.StudyFileResponse;
 import com.example.MedRational.DTOs.StudyFileResponseDTO;
+import com.example.MedRational.DTOs.DownloadableFile;
+import com.example.MedRational.Services.Interfaces.FilePreviewService;
 import com.example.MedRational.Services.Interfaces.StudyFileService;
+import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +22,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.List;
 
 @RestController
@@ -24,11 +32,24 @@ import java.util.List;
 public class StudyFileController {
 
     private final StudyFileService studyFileService;
+    private final FilePreviewService filePreviewService;
 
     // Public / Student: List files attached to a reasoning
     @GetMapping("/reasoning/{reasoningId}")
     public ResponseEntity<List<StudyFileResponse>> getFilesByReasoning(@PathVariable Long reasoningId) {
         return ResponseEntity.ok(studyFileService.getFilesByReasoning(reasoningId));
+    }
+
+    // Public / Student: Inline PDF rendition of a file (PDF as-is; DOCX/PPTX/XLSX converted and cached)
+    @GetMapping("/{id}/preview")
+    public ResponseEntity<Resource> previewFile(@PathVariable Long id) {
+        DownloadableFile preview = filePreviewService.getPreview(id);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
+                        .filename(preview.getFileName(), StandardCharsets.UTF_8).build().toString())
+                .cacheControl(CacheControl.maxAge(Duration.ofHours(1)).cachePrivate())
+                .body(preview.getResource());
     }
 
     @GetMapping("/search")
