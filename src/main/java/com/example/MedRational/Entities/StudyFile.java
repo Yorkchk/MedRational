@@ -34,6 +34,10 @@ public class StudyFile {
     @Column(name = "public_url", nullable = false, length = 1000)
     private String publicUrl;
 
+    // Cached PDF rendition in R2 for Office files (null until first preview)
+    @Column(name = "preview_storage_key", length = 500)
+    private String previewStorageKey;
+
     @Column(name = "file_size_bytes")
     private Long fileSizeBytes;
 

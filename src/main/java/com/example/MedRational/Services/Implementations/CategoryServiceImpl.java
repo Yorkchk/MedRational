@@ -80,7 +80,8 @@ public class CategoryServiceImpl implements CategoryService {
         List<Reasoning> reasonings = reasoningRepository.findByCategoryIdWithFiles(id);
         List<String> keysToDelete = reasonings.stream()
                 .flatMap(r -> r.getFiles().stream())
-                .map(StudyFile::getStorageKey)
+                .flatMap(f -> java.util.stream.Stream.of(f.getStorageKey(), f.getPreviewStorageKey()))
+                .filter(java.util.Objects::nonNull)
                 .toList();
 
         // 1. Clean R2

@@ -10,6 +10,8 @@ public interface R2StorageService {
 
     String uploadFile(MultipartFile file, String prefix) throws IOException;
 
+    void uploadBytes(String storageKey, byte[] data, String contentType);
+
     Resource downloadFileAsResource(String storageKey);
 
     byte[] downloadFileBytes(String storageKey) throws IOException;
