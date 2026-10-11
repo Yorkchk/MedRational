@@ -43,7 +43,8 @@ public class FileRatingServiceImpl implements FileRatingService {
                         .build());
 
         rating.setScore(request.getScore());
-        fileRatingRepository.save(rating);
+        // Flush so the aggregate queries below see this rating
+        fileRatingRepository.saveAndFlush(rating);
 
         // Recompute and update denormalized stats on StudyFile
         return refreshFileRatingStats(file, request.getScore());
@@ -77,29 +78,31 @@ public class FileRatingServiceImpl implements FileRatingService {
                 .orElseThrow(() -> new EntityNotFoundException("File not found with id: " + fileId));
 
         Optional<FileRating> existingRating = fileRatingRepository.findByUserIdAndFileId(userId, fileId);
-        existingRating.ifPresent(fileRatingRepository::delete);
+        existingRating.ifPresent(rating -> {
+            fileRatingRepository.delete(rating);
+            fileRatingRepository.flush();
+        });
 
         return refreshFileRatingStats(file, null);
     }
 
     private FileRatingSummaryDTO refreshFileRatingStats(StudyFile file, Integer currentUserScore) {
-        Object[] stats = (Object[]) fileRatingRepository.getRatingStatsByFileId(file.getId())[0];
-        Double rawAvg = (Double) stats[0];
-        Long totalCount = (Long) stats[1];
+        Double rawAvg = fileRatingRepository.averageScoreByFileId(file.getId());
+        int totalCount = (int) fileRatingRepository.countByFileId(file.getId());
 
         // Round average rating to 1 decimal place (e.g. 4.67 -> 4.7)
-        double roundedAvg = BigDecimal.valueOf(rawAvg)
+        double roundedAvg = BigDecimal.valueOf(rawAvg != null ? rawAvg : 0.0)
                 .setScale(1, RoundingMode.HALF_UP)
                 .doubleValue();
 
         file.setAvgRating(roundedAvg);
-        file.setTotalRatings(totalCount.intValue());
+        file.setTotalRatings(totalCount);
         studyFileRepository.save(file);
 
         return FileRatingSummaryDTO.builder()
                 .fileId(file.getId())
                 .avgRating(roundedAvg)
-                .totalRatings(totalCount.intValue())
+                .totalRatings(totalCount)
                 .userRating(currentUserScore)
                 .build();
     }

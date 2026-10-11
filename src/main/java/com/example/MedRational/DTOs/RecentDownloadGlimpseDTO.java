@@ -14,6 +14,8 @@ public class RecentDownloadGlimpseDTO {
     private String fileName;
     private String fileType;
     private Long fileSizeBytes;
+    private Double avgRating;
+    private Integer totalRatings;
     private LocalDateTime downloadedAt;
 
     // Direct routing metadata for UI navigation

@@ -41,6 +41,8 @@ public class FileSearchServiceImpl implements FileSearchService {
                 .publicUrl(file.getPublicUrl())
                 .previewable(PreviewKind.detect(file.getFileName(), file.getFileType()).isPreviewable())
                 .fileSizeBytes(file.getFileSizeBytes())
+                .avgRating(file.getAvgRating())
+                .totalRatings(file.getTotalRatings())
                 .hashtags(file.getHashtags() != null
                         ? file.getHashtags().stream().map(h -> h.getName()).toList()
                         : Collections.emptyList())

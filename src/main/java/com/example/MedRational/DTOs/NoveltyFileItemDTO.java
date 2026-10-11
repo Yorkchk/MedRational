@@ -16,6 +16,8 @@ public class NoveltyFileItemDTO {
     private String fileName;
     private String fileType;
     private Long fileSizeBytes;
+    private Double avgRating;
+    private Integer totalRatings;
     private LocalDateTime uploadedAt;
 
     // Direct breadcrumbs for UI routing
