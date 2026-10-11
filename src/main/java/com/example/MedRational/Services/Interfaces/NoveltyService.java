@@ -1,16 +1,17 @@
 package com.example.MedRational.Services.Interfaces;
 
 import com.example.MedRational.DTOs.NoveltiesFeedResponseDTO;
+import com.example.MedRational.Entities.User;
 import org.springframework.data.domain.Pageable;
 
 public interface NoveltyService {
 
-    // Returns feed with isNew flags computed against the user's last login
-    NoveltiesFeedResponseDTO getNoveltiesFeed(Long userId, Pageable pageable);
+    // Returns feed with isNew flags computed against the user's novelties baseline
+    NoveltiesFeedResponseDTO getNoveltiesFeed(User user, Pageable pageable);
 
-    // Get count of new uploads since user's last login (for header badge)
-    long getUnreadUploadsCount(Long userId);
+    // Count of uploads since the user last opened the feed (for the header badge)
+    long getUnreadUploadsCount(User user);
 
     // Acknowledges user has viewed the feed and resets the baseline
-    void markNoveltiesAsSeen(Long userId);
+    void markNoveltiesAsSeen(User user);
 }
