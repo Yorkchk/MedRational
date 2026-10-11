@@ -6,6 +6,7 @@ import com.example.MedRational.Entities.WorkshopProject;
 import com.example.MedRational.Entities.enums.NotifType;
 import com.example.MedRational.Entities.enums.ProjectType;
 import com.example.MedRational.Repositories.NotificationRepository;
+import com.example.MedRational.Services.Interfaces.PushNotificationService;
 import com.example.MedRational.Services.Interfaces.WorkshopNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -21,6 +24,7 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
 
     private final NotificationRepository notificationRepository;
     private final JavaMailSender mailSender;
+    private final PushNotificationService pushNotificationService;
 
     @Override
     @Transactional
@@ -35,7 +39,7 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
                 ? "Spots are limited! Registration for '" + project.getTitle() + "' opens in 10 minutes."
                 : "Applications for '" + project.getTitle() + "' open in 10 minutes. Prepare your submission.";
 
-        saveBroadcastNotification(title, body, project.getId(), NotifType.WORKSHOP_REMINDER);
+        broadcast(title, body, project.getId(), NotifType.WORKSHOP_REMINDER);
         sendAuthorEmail(project, title, body);
     }
 
@@ -52,7 +56,7 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
                 ? "First-come, first-served registration is officially OPEN for '" + project.getTitle() + "'! Secure your spot."
                 : "Submissions for '" + project.getTitle() + "' are now open. Complete your motivation submission before the deadline.";
 
-        saveBroadcastNotification(title, body, project.getId(), NotifType.WORKSHOP_LAUNCH);
+        broadcast(title, body, project.getId(), NotifType.WORKSHOP_LAUNCH);
         sendAuthorEmail(project, title, body);
     }
 
@@ -69,7 +73,7 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
                 ? "Registration for '" + project.getTitle() + "' is wrapping up and closes in 10 minutes."
                 : "The application deadline for '" + project.getTitle() + "' is in 10 minutes. Submit your motivation form now.";
 
-        saveBroadcastNotification(title, body, project.getId(), NotifType.WORKSHOP_REMINDER);
+        broadcast(title, body, project.getId(), NotifType.WORKSHOP_REMINDER);
         sendAuthorEmail(project, title, body);
     }
 
@@ -86,8 +90,18 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
                 ? "Registration for '" + project.getTitle() + "' has ended."
                 : "Application period for '" + project.getTitle() + "' is now closed. Submissions are under review.";
 
-        saveBroadcastNotification(title, body, project.getId(), NotifType.WORKSHOP_CLOSED);
+        broadcast(title, body, project.getId(), NotifType.WORKSHOP_CLOSED);
         sendAuthorEmail(project, title, body);
+    }
+
+    // Stored for everyone and pushed to every signed-in phone (the app subscribes to the topic)
+    private void broadcast(String title, String body, Long projectId, NotifType type) {
+        saveBroadcastNotification(title, body, projectId, type);
+        pushNotificationService.sendToTopic(
+                PushNotificationService.WORKSHOPS_TOPIC,
+                title,
+                body,
+                Map.of("projectId", String.valueOf(projectId), "type", type.name()));
     }
 
     private void saveBroadcastNotification(String title, String body, Long projectId, NotifType type) {
