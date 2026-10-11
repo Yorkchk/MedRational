@@ -39,3 +39,6 @@ build/
 
 # Supabase CLI scratch files
 supabase/snippets/
+
+# Firebase service-account key (secret): point FIREBASE_CREDENTIALS in .env at it
+firebase-service-account*.json

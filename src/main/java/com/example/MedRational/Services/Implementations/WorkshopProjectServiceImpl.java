@@ -178,7 +178,27 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
         WorkshopProject project = workshopProjectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Workshop project not found with id: " + projectId));
 
+        if (project.getStatus() == targetStatus) {
+            return mapToDTO(project, true);
+        }
         project.setStatus(targetStatus);
+
+        // Announce a manual open or close like the scheduler does (WORKSHOP_LAUNCH / WORKSHOP_CLOSED),
+        // and mark it sent so the scheduler doesn't repeat it. Back to UPCOMING announces nothing
+        if (targetStatus == ProjectStatus.OPEN) {
+            project.setOpeningReminderSent(true);
+            project.setLaunchNotificationSent(true);
+            // Reopened: the closing reminder is due again if the deadline is still ahead
+            boolean closesLater = project.getRegistrationClosesAt().isAfter(LocalDateTime.now());
+            project.setClosingReminderSent(!closesLater);
+            project.setClosedNotificationSent(false);
+            workshopNotificationService.notifyRegistrationOpened(project);
+        } else if (targetStatus == ProjectStatus.CLOSED) {
+            project.setClosingReminderSent(true);
+            project.setClosedNotificationSent(true);
+            workshopNotificationService.notifyRegistrationClosed(project);
+        }
+
         return mapToDTO(workshopProjectRepository.save(project), true);
     }
 

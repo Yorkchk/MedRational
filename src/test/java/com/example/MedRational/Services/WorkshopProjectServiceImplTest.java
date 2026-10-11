@@ -174,6 +174,55 @@ class WorkshopProjectServiceImplTest {
     }
 
     @Test
+    void closingByHandAnnouncesItOnce() {
+        WorkshopProject project = stored(project(ProjectStatus.OPEN));
+
+        service.updateProjectStatus(PROJECT_ID, ProjectStatus.CLOSED);
+
+        assertEquals(ProjectStatus.CLOSED, project.getStatus());
+        verify(notificationService).notifyRegistrationClosed(project);
+        // The scheduler must not send its own closing alerts later
+        assertTrue(project.isClosingReminderSent());
+        assertTrue(project.isClosedNotificationSent());
+    }
+
+    @Test
+    void openingByHandAnnouncesItAndKeepsTheClosingReminder() {
+        WorkshopProject project = project(ProjectStatus.UPCOMING);
+        project.setRegistrationOpensAt(LocalDateTime.now().plusDays(1));
+        project.setRegistrationClosesAt(LocalDateTime.now().plusDays(2));
+        stored(project);
+
+        service.updateProjectStatus(PROJECT_ID, ProjectStatus.OPEN);
+
+        assertEquals(ProjectStatus.OPEN, project.getStatus());
+        verify(notificationService).notifyRegistrationOpened(project);
+        assertTrue(project.isOpeningReminderSent());
+        assertTrue(project.isLaunchNotificationSent());
+        assertFalse(project.isClosingReminderSent());
+    }
+
+    @Test
+    void backToUpcomingAnnouncesNothing() {
+        stored(project(ProjectStatus.OPEN));
+
+        service.updateProjectStatus(PROJECT_ID, ProjectStatus.UPCOMING);
+
+        verify(notificationService, never()).notifyRegistrationOpened(any());
+        verify(notificationService, never()).notifyRegistrationClosed(any());
+    }
+
+    @Test
+    void choosingTheCurrentStatusAnnouncesNothing() {
+        stored(project(ProjectStatus.CLOSED));
+
+        service.updateProjectStatus(PROJECT_ID, ProjectStatus.CLOSED);
+
+        verify(notificationService, never()).notifyRegistrationClosed(any());
+        verify(projectRepository, never()).save(any());
+    }
+
+    @Test
     void updateRejectsClosingBeforeOpening() {
         stored(project(ProjectStatus.UPCOMING));
         LocalDateTime opensAt = LocalDateTime.now().plusDays(2);
