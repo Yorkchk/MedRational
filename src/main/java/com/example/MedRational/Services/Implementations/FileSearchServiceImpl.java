@@ -1,5 +1,6 @@
 package com.example.MedRational.Services.Implementations;
 
+import com.example.MedRational.Preview.PreviewKind;
 import com.example.MedRational.DTOs.FileSearchResultDTO;
 import com.example.MedRational.Entities.StudyFile;
 import com.example.MedRational.Repositories.StudyFileRepository;
@@ -38,6 +39,7 @@ public class FileSearchServiceImpl implements FileSearchService {
                 .fileName(file.getFileName())
                 .fileType(file.getFileType())
                 .publicUrl(file.getPublicUrl())
+                .previewable(PreviewKind.detect(file.getFileName(), file.getFileType()).isPreviewable())
                 .fileSizeBytes(file.getFileSizeBytes())
                 .hashtags(file.getHashtags() != null
                         ? file.getHashtags().stream().map(h -> h.getName()).toList()
