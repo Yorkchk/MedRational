@@ -63,6 +63,15 @@ public class WorkshopProjectController {
                 .body(workshopService.createProject(request, authorId));
     }
 
+    // Admin: Edit a workshop's details and dates. Changing the dates recomputes the status
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<WorkshopProjectResponseDTO> updateProject(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateWorkshopProjectDTO request) {
+        return ResponseEntity.ok(workshopService.updateProject(id, request));
+    }
+
     // Admin: Upload attachment to workshop (stored in R2 under WorkshopAttachments/)
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ROLE_ADMIN')")

@@ -50,15 +50,8 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
         User author = userRepository.findById(authorId)
                 .orElseThrow(() -> new EntityNotFoundException("Author user not found with id: " + authorId));
 
-        LocalDateTime now = LocalDateTime.now();
-        ProjectStatus initialStatus;
-        if (now.isBefore(request.getRegistrationOpensAt())) {
-            initialStatus = ProjectStatus.UPCOMING;
-        } else if (now.isBefore(request.getRegistrationClosesAt())) {
-            initialStatus = ProjectStatus.OPEN;
-        } else {
-            initialStatus = ProjectStatus.CLOSED;
-        }
+        ProjectStatus initialStatus = statusFor(
+                request.getRegistrationOpensAt(), request.getRegistrationClosesAt(), LocalDateTime.now());
 
         WorkshopProject project = WorkshopProject.builder()
                 .title(request.getTitle().trim())
@@ -72,6 +65,44 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
                 .author(author)
                 .attachments(new ArrayList<>())
                 .build();
+
+        return mapToDTO(workshopProjectRepository.save(project), true);
+    }
+
+    @Override
+    @Transactional
+    public WorkshopProjectResponseDTO updateProject(Long projectId, CreateWorkshopProjectDTO request) {
+        if (request.getRegistrationClosesAt().isBefore(request.getRegistrationOpensAt())) {
+            throw new IllegalArgumentException("Registration closing time cannot be before opening time.");
+        }
+
+        WorkshopProject project = workshopProjectRepository.findById(projectId)
+                .orElseThrow(() -> new EntityNotFoundException("Workshop project not found with id: " + projectId));
+
+        project.setTitle(request.getTitle().trim());
+        project.setDescription(request.getDescription().trim());
+        project.setProjectType(request.getProjectType());
+        project.setFormLink(request.getFormLink());
+        project.setCapacity(request.getCapacity());
+
+        // New dates mean a new schedule: the status follows them and the reminders are sent again for
+        // moments still ahead. Unchanged dates keep the status, so a manual override (e.g. closed early
+        // because the form is full) survives editing the description
+        boolean datesChanged = !request.getRegistrationOpensAt().equals(project.getRegistrationOpensAt())
+                || !request.getRegistrationClosesAt().equals(project.getRegistrationClosesAt());
+        if (datesChanged) {
+            LocalDateTime now = LocalDateTime.now();
+            project.setRegistrationOpensAt(request.getRegistrationOpensAt());
+            project.setRegistrationClosesAt(request.getRegistrationClosesAt());
+            project.setStatus(statusFor(project.getRegistrationOpensAt(), project.getRegistrationClosesAt(), now));
+
+            boolean opened = !project.getRegistrationOpensAt().isAfter(now);
+            boolean closed = !project.getRegistrationClosesAt().isAfter(now);
+            project.setOpeningReminderSent(opened);
+            project.setLaunchNotificationSent(opened);
+            project.setClosingReminderSent(closed);
+            project.setClosedNotificationSent(closed);
+        }
 
         return mapToDTO(workshopProjectRepository.save(project), true);
     }
@@ -237,6 +268,16 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
                 .createdAt(project.getCreatedAt())
                 .attachments(attachments)
                 .build();
+    }
+
+    private ProjectStatus statusFor(LocalDateTime opensAt, LocalDateTime closesAt, LocalDateTime now) {
+        if (now.isBefore(opensAt)) {
+            return ProjectStatus.UPCOMING;
+        }
+        if (now.isBefore(closesAt)) {
+            return ProjectStatus.OPEN;
+        }
+        return ProjectStatus.CLOSED;
     }
 
     private WorkshopAttachmentResponseDTO mapAttachmentToDTO(WorkshopAttachment attachment) {
