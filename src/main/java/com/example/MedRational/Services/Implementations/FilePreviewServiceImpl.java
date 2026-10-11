@@ -35,7 +35,14 @@ public class FilePreviewServiceImpl implements FilePreviewService {
         String previewName = toPdfName(file.getFileName());
 
         if (kind == PreviewKind.NONE) {
-            throw new UnsupportedMediaTypeException("Preview is only supported for PDF, DOCX, PPTX and XLSX files.");
+            throw new UnsupportedMediaTypeException("Preview is only supported for PDF, DOCX, PPTX, XLSX and image files.");
+        }
+
+        // The R2 bucket isn't public, so images are streamed through here instead of their publicUrl
+        if (kind == PreviewKind.IMAGE) {
+            Resource resource = r2StorageService.downloadFileAsResource(file.getStorageKey());
+            String contentType = PreviewKind.imageContentType(file.getFileName(), file.getFileType());
+            return new DownloadableFile(file.getFileName(), contentType, resource);
         }
 
         if (kind == PreviewKind.PDF) {
