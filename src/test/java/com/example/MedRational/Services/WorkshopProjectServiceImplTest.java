@@ -12,6 +12,7 @@ import com.example.MedRational.Repositories.WorkshopProjectRepository;
 import com.example.MedRational.Services.Implementations.WorkshopProjectServiceImpl;
 import com.example.MedRational.Services.Interfaces.R2StorageService;
 import com.example.MedRational.Services.Interfaces.WorkshopNotificationService;
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -21,7 +22,9 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -91,6 +94,101 @@ class WorkshopProjectServiceImplTest {
         assertEquals(25, created.getCapacity());
         assertEquals("Suturing", created.getTitle());
         assertEquals(ProjectStatus.UPCOMING, created.getStatus());
+    }
+
+    private CreateWorkshopProjectDTO edit(LocalDateTime opensAt, LocalDateTime closesAt) {
+        return CreateWorkshopProjectDTO.builder()
+                .title(" Advanced suturing ")
+                .description(" Bring your kit ")
+                .projectType(ProjectType.FIRST_COME_FIRST_SERVED)
+                .formLink("https://forms.example.com/advanced")
+                .capacity(12)
+                .registrationOpensAt(opensAt)
+                .registrationClosesAt(closesAt)
+                .build();
+    }
+
+    private WorkshopProject stored(WorkshopProject project) {
+        when(projectRepository.findById(PROJECT_ID)).thenReturn(Optional.of(project));
+        when(projectRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        return project;
+    }
+
+    @Test
+    void updateChangesTheDetails() {
+        WorkshopProject project = stored(project(ProjectStatus.OPEN));
+
+        WorkshopProjectResponseDTO updated = service.updateProject(
+                PROJECT_ID, edit(project.getRegistrationOpensAt(), project.getRegistrationClosesAt()));
+
+        assertEquals("Advanced suturing", updated.getTitle());
+        assertEquals("Bring your kit", updated.getDescription());
+        assertEquals("https://forms.example.com/advanced", updated.getFormLink());
+        assertEquals(12, updated.getCapacity());
+        verify(projectRepository).save(project);
+    }
+
+    @Test
+    void unchangedDatesKeepAManuallyForcedStatus() {
+        // Open by its dates, but an admin closed it early because the form was full
+        WorkshopProject project = stored(project(ProjectStatus.CLOSED));
+
+        service.updateProject(PROJECT_ID, edit(project.getRegistrationOpensAt(), project.getRegistrationClosesAt()));
+
+        assertEquals(ProjectStatus.CLOSED, project.getStatus());
+    }
+
+    @Test
+    void movingTheDatesAheadReopensTheScheduleAndItsReminders() {
+        WorkshopProject project = project(ProjectStatus.CLOSED);
+        project.setOpeningReminderSent(true);
+        project.setLaunchNotificationSent(true);
+        project.setClosingReminderSent(true);
+        project.setClosedNotificationSent(true);
+        stored(project);
+
+        service.updateProject(PROJECT_ID, edit(LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(2)));
+
+        assertEquals(ProjectStatus.UPCOMING, project.getStatus());
+        assertFalse(project.isOpeningReminderSent());
+        assertFalse(project.isLaunchNotificationSent());
+        assertFalse(project.isClosingReminderSent());
+        assertFalse(project.isClosedNotificationSent());
+    }
+
+    @Test
+    void extendingTheDeadlineOfAnOpenProjectOnlyResetsTheClosingReminders() {
+        WorkshopProject project = project(ProjectStatus.CLOSED);
+        project.setRegistrationClosesAt(LocalDateTime.now().minusMinutes(5));
+        project.setClosingReminderSent(true);
+        project.setClosedNotificationSent(true);
+        stored(project);
+
+        service.updateProject(PROJECT_ID, edit(project.getRegistrationOpensAt(), LocalDateTime.now().plusHours(3)));
+
+        assertEquals(ProjectStatus.OPEN, project.getStatus());
+        assertTrue(project.isOpeningReminderSent());
+        assertTrue(project.isLaunchNotificationSent());
+        assertFalse(project.isClosingReminderSent());
+        assertFalse(project.isClosedNotificationSent());
+    }
+
+    @Test
+    void updateRejectsClosingBeforeOpening() {
+        stored(project(ProjectStatus.UPCOMING));
+        LocalDateTime opensAt = LocalDateTime.now().plusDays(2);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.updateProject(PROJECT_ID, edit(opensAt, opensAt.minusHours(1))));
+        verify(projectRepository, never()).save(any());
+    }
+
+    @Test
+    void updatingAMissingProjectIsNotFound() {
+        when(projectRepository.findById(PROJECT_ID)).thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class, () -> service.updateProject(
+                PROJECT_ID, edit(LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(2))));
     }
 
     @Test

@@ -27,6 +27,8 @@ public interface WorkshopProjectService {
 
     Page<WorkshopProjectResponseDTO> getAllProjects(Pageable pageable, boolean isAdmin);
 
+    WorkshopProjectResponseDTO updateProject(Long projectId, CreateWorkshopProjectDTO request);
+
     WorkshopProjectResponseDTO updateProjectStatus(Long projectId, ProjectStatus targetStatus);
 
     void deleteProject(Long projectId);
