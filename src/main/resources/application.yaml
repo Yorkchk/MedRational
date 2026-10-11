@@ -25,3 +25,8 @@ jwt:
 server:
   port: 8080
   address: 0.0.0.0   # Binds to all network interfaces so local devices can reach it
+
+preview:
+  office-home: ${LIBREOFFICE_HOME:}   # LibreOffice install dir; empty = auto-detect
+  port-numbers: 2002
+  task-execution-timeout-ms: 60000

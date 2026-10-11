@@ -1,5 +1,6 @@
 package com.example.MedRational.Services.Implementations;
 
+import com.example.MedRational.Preview.PreviewKind;
 import com.example.MedRational.DTOs.RecentDownloadGlimpseDTO;
 import com.example.MedRational.DTOs.StudyFileResponseDTO;
 import com.example.MedRational.Entities.*;
@@ -82,6 +83,7 @@ public class DownloadTrackingServiceImpl implements DownloadTrackingService {
                 .fileName(file.getFileName())
                 .fileType(file.getFileType())
                 .publicUrl(file.getPublicUrl())
+                .previewable(PreviewKind.detect(file.getFileName(), file.getFileType()).isPreviewable())
                 .fileSizeBytes(file.getFileSizeBytes())
                 .avgRating(file.getAvgRating())
                 .totalRatings(file.getTotalRatings())

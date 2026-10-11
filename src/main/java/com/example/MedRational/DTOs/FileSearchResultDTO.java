@@ -20,6 +20,7 @@ public class FileSearchResultDTO {
     private String fileName;
     private String fileType;
     private String publicUrl;
+    private boolean previewable;
     private Long fileSizeBytes;
     private List<String> hashtags;
 }

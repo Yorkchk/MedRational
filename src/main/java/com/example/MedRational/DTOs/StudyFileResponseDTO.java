@@ -15,6 +15,7 @@ public class StudyFileResponseDTO {
     private String fileName;
     private String fileType;
     private String publicUrl;
+    private boolean previewable;
     private Long fileSizeBytes;
     private Double avgRating;
     private Integer totalRatings;
