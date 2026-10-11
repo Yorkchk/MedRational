@@ -18,11 +18,14 @@ public class DownloadTrackingController {
     private final DownloadTrackingService downloadTrackingService;
     private final CurrentUserGuard currentUserGuard;
 
-    // Fetch the 10 most recent downloads for the user's glimpse feed
+    // The user's most recently downloaded files, newest first, each file once.
+    // limit defaults to downloads.recent.default-limit (10) and is capped at downloads.recent.max-limit
     @GetMapping("/users/{userId}/recent-downloads")
-    public ResponseEntity<List<RecentDownloadGlimpseDTO>> getRecentDownloads(@PathVariable Long userId) {
+    public ResponseEntity<List<RecentDownloadGlimpseDTO>> getRecentDownloads(
+            @PathVariable Long userId,
+            @RequestParam(required = false) Integer limit) {
         currentUserGuard.requireSelf(userId);
-        return ResponseEntity.ok(downloadTrackingService.getRecentDownloadsGlimpse(userId));
+        return ResponseEntity.ok(downloadTrackingService.getRecentDownloadsGlimpse(userId, limit));
     }
 
     // Direct resolution endpoint when the user clicks on a glimpse item

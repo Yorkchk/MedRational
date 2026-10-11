@@ -10,7 +10,8 @@ import com.example.MedRational.Repositories.UserFileDownloadRepository;
 import com.example.MedRational.Repositories.UserRepository;
 import com.example.MedRational.Services.Interfaces.DownloadTrackingService;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,31 +21,47 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class DownloadTrackingServiceImpl implements DownloadTrackingService {
 
     private final UserFileDownloadRepository userFileDownloadRepository;
     private final FileDownloadEventRepository fileDownloadEventRepository;
     private final StudyFileRepository studyFileRepository;
     private final UserRepository userRepository;
+    private final int defaultRecentLimit;
+    private final int maxRecentLimit;
+
+    public DownloadTrackingServiceImpl(UserFileDownloadRepository userFileDownloadRepository,
+                                       FileDownloadEventRepository fileDownloadEventRepository,
+                                       StudyFileRepository studyFileRepository,
+                                       UserRepository userRepository,
+                                       @Value("${downloads.recent.default-limit:10}") int defaultRecentLimit,
+                                       @Value("${downloads.recent.max-limit:50}") int maxRecentLimit) {
+        this.userFileDownloadRepository = userFileDownloadRepository;
+        this.fileDownloadEventRepository = fileDownloadEventRepository;
+        this.studyFileRepository = studyFileRepository;
+        this.userRepository = userRepository;
+        this.defaultRecentLimit = defaultRecentLimit;
+        this.maxRecentLimit = maxRecentLimit;
+    }
 
     @Override
     @Transactional
     public void recordUserDownload(Long userId, Long fileId) {
         StudyFile file = studyFileRepository.findById(fileId)
                 .orElseThrow(() -> new EntityNotFoundException("File not found with id: " + fileId));
+        User user = userId == null ? null : userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
 
         // 1. Log platform metrics event
         fileDownloadEventRepository.save(FileDownloadEvent.builder()
                 .file(file)
+                .user(user)
                 .createdAt(LocalDateTime.now())
                 .build());
 
-        // 2. Track or update personal user download history
-        if (userId != null) {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
-
+        // 2. Track or update personal user download history: one row per (user, file),
+        //    so a re-download only moves the file back to the top
+        if (user != null) {
             UserFileDownload userDownload = userFileDownloadRepository
                     .findByUserIdAndFileId(userId, fileId)
                     .orElseGet(() -> UserFileDownload.builder()
@@ -59,12 +76,14 @@ public class DownloadTrackingServiceImpl implements DownloadTrackingService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<RecentDownloadGlimpseDTO> getRecentDownloadsGlimpse(Long userId) {
+    public List<RecentDownloadGlimpseDTO> getRecentDownloadsGlimpse(Long userId, Integer limit) {
         if (!userRepository.existsById(userId)) {
             throw new EntityNotFoundException("User not found with id: " + userId);
         }
 
-        return userFileDownloadRepository.findTop10ByUserIdOrderByDownloadedAtDesc(userId).stream()
+        return userFileDownloadRepository
+                .findByUserIdOrderByDownloadedAtDesc(userId, PageRequest.of(0, effectiveRecentLimit(limit)))
+                .stream()
                 .map(this::toGlimpseDTO)
                 .collect(Collectors.toList());
     }
@@ -96,6 +115,13 @@ public class DownloadTrackingServiceImpl implements DownloadTrackingService {
                         : Set.of())
                 .uploadedAt(file.getUploadedAt())
                 .build();
+    }
+
+    int effectiveRecentLimit(Integer requested) {
+        if (requested == null) {
+            return defaultRecentLimit;
+        }
+        return Math.max(1, Math.min(requested, maxRecentLimit));
     }
 
     private RecentDownloadGlimpseDTO toGlimpseDTO(UserFileDownload download) {
