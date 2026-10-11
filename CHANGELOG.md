@@ -6,9 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- File list responses (reasoning files, search, novelties, recent downloads) include each file's `avgRating` and `totalRatings`.
 - `docs/CI_AND_TESTS.md` and `docs/GITHUB_REPO_SETUP.md` guides, linked from the README.
 - GitHub Actions CI running the test suite against a PostgreSQL service container, Dependabot, and a PR template.
 - `.env.example` documenting every required environment variable.
+
+### Fixed
+- Regular users can rate files: `POST`/`DELETE /api/v1/files/{fileId}/ratings` were admin-only, so rating returned 403.
+- Deleting a rated file, reasoning or category no longer fails on the `file_ratings` foreign key.
+- Rating stats are read with typed queries instead of an `Object[]` cast that could throw `ClassCastException`.
+
+### Security
+- The rating endpoints take the rater from the JWT; the `userId` request parameter, which let anyone rate as anyone, is gone.
 
 ## [0.1.0] - 2026-10-08
 

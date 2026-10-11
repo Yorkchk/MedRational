@@ -134,6 +134,8 @@ public class DownloadTrackingServiceImpl implements DownloadTrackingService {
                 .fileName(file != null ? file.getFileName() : null)
                 .fileType(file != null ? file.getFileType() : null)
                 .fileSizeBytes(file != null ? file.getFileSizeBytes() : null)
+                .avgRating(file != null ? file.getAvgRating() : null)
+                .totalRatings(file != null ? file.getTotalRatings() : null)
                 .downloadedAt(download.getDownloadedAt())
                 .reasoningId(reasoning != null ? reasoning.getId() : null)
                 .reasoningTitle(reasoning != null ? reasoning.getTitle() : null)
