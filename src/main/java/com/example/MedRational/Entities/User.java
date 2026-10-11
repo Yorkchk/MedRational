@@ -42,9 +42,13 @@ public class User {
     @Column(name = "otp_expiry")
     private LocalDateTime otpExpiry;
 
-    // Powers "Nouveauté": highlights files uploaded after this timestamp
-    @Column(name = "last_login_at")
+        @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
+
+    // Novelties baseline: files uploaded after this are "new". Only moves when the user opens the
+    // novelties feed (login doesn't touch it); null means the account was never shown the feed
+    @Column(name = "novelties_seen_at")
+    private LocalDateTime noveltiesSeenAt;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -1,5 +1,6 @@
 package com.example.MedRational.DTOs;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -25,6 +26,8 @@ public class NoveltyFileItemDTO {
 
     private Set<String> hashtags;
 
-    // Visual differentiator flag (bolding / badge in the UI)
+    // Visual differentiator flag (bolding / badge in the UI). Lombok's getter is isNew(), which
+    // Jackson would serialize as "new"
+    @Getter(onMethod_ = @JsonProperty("isNew"))
     private boolean isNew;
 }
