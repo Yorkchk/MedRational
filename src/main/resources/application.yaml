@@ -35,3 +35,8 @@ downloads:
   recent:
     default-limit: 10   # files returned by /users/{id}/recent-downloads when no ?limit is given
     max-limit: 50       # upper bound for ?limit
+
+suggestions:
+  attachments:
+    max-size: 10MB      # per file, for suggestions and their replies
+    allowed-extensions: pdf, png, jpg, jpeg, webp, gif, doc, docx, ppt, pptx, xls, xlsx, txt, csv

@@ -1,5 +1,6 @@
 package com.example.MedRational.Security;
 
+import com.example.MedRational.Entities.User;
 import com.example.MedRational.Repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -23,6 +24,16 @@ public class CurrentUserGuard {
             return Optional.empty();
         }
         return userRepository.findByEmail(auth.getName()).map(user -> user.getId());
+    }
+
+    // The authenticated user; rejects the request (403) when there is none
+    public User requireCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
+            throw new AccessDeniedException("You need to be signed in");
+        }
+        return userRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new AccessDeniedException("You need to be signed in"));
     }
 
     // Rejects the request (403) unless userId belongs to the authenticated user.
