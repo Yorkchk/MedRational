@@ -30,6 +30,16 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.PAYLOAD_TOO_LARGE, "File size exceeds the maximum permitted limit.");
     }
 
+    @ExceptionHandler(AttachmentTooLargeException.class)
+    public ResponseEntity<Map<String, Object>> handleAttachmentTooLarge(AttachmentTooLargeException ex) {
+        return buildResponse(HttpStatus.PAYLOAD_TOO_LARGE, ex.getMessage());
+    }
+
+    @ExceptionHandler(SuggestionClosedException.class)
+    public ResponseEntity<Map<String, Object>> handleSuggestionClosed(SuggestionClosedException ex) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(UnsupportedMediaTypeException.class)
     public ResponseEntity<Map<String, Object>> handleUnsupportedMediaType(UnsupportedMediaTypeException ex) {
         return buildResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE, ex.getMessage());

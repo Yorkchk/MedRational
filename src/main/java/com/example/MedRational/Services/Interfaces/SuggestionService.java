@@ -1,34 +1,47 @@
 package com.example.MedRational.Services.Interfaces;
 
-import com.example.MedRational.DTOs.CreateSuggestionRequestDTO;
-import com.example.MedRational.DTOs.SuggestionResponseDTO;
-import com.example.MedRational.DTOs.UpdateSuggestionStatusDTO;
+import com.example.MedRational.DTOs.DownloadableFile;
+import com.example.MedRational.DTOs.SuggestionDetailDTO;
+import com.example.MedRational.DTOs.SuggestionMessageDTO;
+import com.example.MedRational.DTOs.SuggestionSummaryDTO;
+import com.example.MedRational.Entities.User;
 import com.example.MedRational.Entities.enums.SuggestionStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
+/**
+ * Suggestions are visible to the user who sent them and to admins only; every method that takes a
+ * caller enforces that (403 otherwise). Closed suggestions are read-only (409).
+ */
 public interface SuggestionService {
 
-    // User submits suggestion (user must not be null)
-    SuggestionResponseDTO submitSuggestion(Long userId, CreateSuggestionRequestDTO request);
+    // A signed-in user sends a suggestion, optionally with one attachment
+    SuggestionDetailDTO createSuggestion(User caller, String title, String description, MultipartFile file);
 
-    // Admin inbox (all suggestions)
-    Page<SuggestionResponseDTO> getAllSuggestions(Pageable pageable);
+    // The caller's own suggestions with the given status
+    Page<SuggestionSummaryDTO> getMySuggestions(User caller, SuggestionStatus status, Pageable pageable);
 
-    // Admin inbox filtered by status
-    Page<SuggestionResponseDTO> getSuggestionsByStatus(SuggestionStatus status, Pageable pageable);
+    // Admin inbox (PENDING) or archive (CLOSED)
+    Page<SuggestionSummaryDTO> getInbox(User admin, SuggestionStatus status, Pageable pageable);
 
-    // Admin gets single suggestion
-    SuggestionResponseDTO getSuggestionById(Long suggestionId);
+    // Full thread; also marks it read for the caller's side
+    SuggestionDetailDTO getSuggestion(User caller, Long suggestionId);
 
-    // Admin updates status (e.g. APPROVED, REJECTED)
-    SuggestionResponseDTO updateSuggestionStatus(Long suggestionId, UpdateSuggestionStatusDTO request);
+    SuggestionMessageDTO postMessage(User caller, Long suggestionId, String body, MultipartFile file);
 
-    // Admin deletes suggestion
+    // Admin only; permanent
+    SuggestionDetailDTO closeSuggestion(User admin, Long suggestionId);
+
+    DownloadableFile openSuggestionAttachment(User caller, Long suggestionId);
+
+    DownloadableFile openMessageAttachment(User caller, Long suggestionId, Long messageId);
+
+    // Admin only; also removes the attachments from storage
     void deleteSuggestion(Long suggestionId);
 
-    // Status counts for admin badge counters
+    // Counts per status plus UNREAD (pending suggestions with new user activity) for admin badges
     Map<String, Long> getSuggestionStatusCounts();
 }
