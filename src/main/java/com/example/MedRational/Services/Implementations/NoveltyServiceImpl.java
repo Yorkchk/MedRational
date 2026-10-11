@@ -82,6 +82,8 @@ public class NoveltyServiceImpl implements NoveltyService {
                 .fileName(file.getFileName())
                 .fileType(file.getFileType())
                 .fileSizeBytes(file.getFileSizeBytes())
+                .avgRating(file.getAvgRating())
+                .totalRatings(file.getTotalRatings())
                 .uploadedAt(file.getUploadedAt())
                 .reasoningId(reasoning != null ? reasoning.getId() : null)
                 .reasoningTitle(reasoning != null ? reasoning.getTitle() : null)

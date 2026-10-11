@@ -22,5 +22,7 @@ public class FileSearchResultDTO {
     private String publicUrl;
     private boolean previewable;
     private Long fileSizeBytes;
+    private Double avgRating;
+    private Integer totalRatings;
     private List<String> hashtags;
 }

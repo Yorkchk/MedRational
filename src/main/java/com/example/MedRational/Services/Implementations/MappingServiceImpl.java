@@ -49,6 +49,8 @@ public class MappingServiceImpl {
                 .publicUrl(file.getPublicUrl())
                 .previewable(PreviewKind.detect(file.getFileName(), file.getFileType()).isPreviewable())
                 .fileSizeBytes(file.getFileSizeBytes())
+                .avgRating(file.getAvgRating())
+                .totalRatings(file.getTotalRatings())
                 .uploadedAt(file.getUploadedAt())
                 .build();
     }
