@@ -45,3 +45,7 @@ Layered packages under `com.example.MedRational` (note the capitalized package n
 ## Git workflow
 
 `main` is protected: changes go through short-lived branches (`feat/…`, `fix/…`, `chore/…`, `docs/…`) and pull requests that must pass `.github/workflows/backend-ci.yml` (`./mvnw -B verify` against a PostgreSQL service container with dummy env values). PRs are squash-merged, so PR titles use Conventional Commits (`feat(favorites): …`). Record user-facing changes under `[Unreleased]` in `CHANGELOG.md`. When adding a new required env var, also add it to `.env.example` and the CI workflow's `env` block.
+
+## Testing policy
+
+Every new feature or behavior change ships with tests in the same PR, and every bug fix includes a regression test that fails without the fix. Untested features are not considered done. See `docs/CI_AND_TESTS.md` §10 for test patterns and examples.

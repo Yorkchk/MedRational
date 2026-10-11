@@ -1,11 +1,22 @@
 version: 2
+
+# Minor and patch updates are grouped into one PR per ecosystem (low risk; merge once CI is green).
+# Major updates are NOT grouped: each gets its own PR to review, test locally, and merge manually.
+# Nothing is auto-merged.
 updates:
   - package-ecosystem: maven
     directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    groups:
+      maven-minor-and-patch:
+        update-types: ["minor", "patch"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      actions-minor-and-patch:
+        update-types: ["minor", "patch"]
