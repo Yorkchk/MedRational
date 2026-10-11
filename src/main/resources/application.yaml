@@ -30,3 +30,8 @@ preview:
   office-home: ${LIBREOFFICE_HOME:}   # LibreOffice install dir; empty = auto-detect
   port-numbers: 2002
   task-execution-timeout-ms: 60000
+
+downloads:
+  recent:
+    default-limit: 10   # files returned by /users/{id}/recent-downloads when no ?limit is given
+    max-limit: 50       # upper bound for ?limit
