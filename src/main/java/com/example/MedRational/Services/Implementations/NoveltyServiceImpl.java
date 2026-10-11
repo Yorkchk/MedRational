@@ -10,13 +10,13 @@ import com.example.MedRational.Entities.User;
 import com.example.MedRational.Repositories.StudyFileRepository;
 import com.example.MedRational.Repositories.UserRepository;
 import com.example.MedRational.Services.Interfaces.NoveltyService;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -27,26 +27,17 @@ public class NoveltyServiceImpl implements NoveltyService {
 
     private final StudyFileRepository studyFileRepository;
     private final UserRepository userRepository;
+    private final Clock clock;
 
     @Override
     @Transactional(readOnly = true)
-    public NoveltiesFeedResponseDTO getNoveltiesFeed(Long userId, Pageable pageable) {
-        LocalDateTime lastLogin = null;
-        if (userId != null) {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
-            lastLogin = user.getLastLoginAt();
-        }
-
-        final LocalDateTime comparisonTime = lastLogin;
+    public NoveltiesFeedResponseDTO getNoveltiesFeed(User user, Pageable pageable) {
+        LocalDateTime baseline = baselineOf(user);
 
         Page<StudyFile> filePage = studyFileRepository.findAllFilesForNovelties(pageable);
+        Page<NoveltyFileItemDTO> mappedPage = filePage.map(file -> toNoveltyDTO(file, baseline));
 
-        Page<NoveltyFileItemDTO> mappedPage = filePage.map(file -> toNoveltyDTO(file, comparisonTime));
-
-        long unreadCount = (comparisonTime != null)
-                ? studyFileRepository.countByUploadedAtAfter(comparisonTime)
-                : 0L;
+        long unreadCount = baseline != null ? studyFileRepository.countByUploadedAtAfter(baseline) : 0L;
 
         return NoveltiesFeedResponseDTO.builder()
                 .newFilesCount(unreadCount)
@@ -56,34 +47,31 @@ public class NoveltyServiceImpl implements NoveltyService {
 
     @Override
     @Transactional(readOnly = true)
-    public long getUnreadUploadsCount(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
-
-        if (user.getLastLoginAt() == null) {
-            return studyFileRepository.count();
-        }
-
-        return studyFileRepository.countByUploadedAtAfter(user.getLastLoginAt());
+    public long getUnreadUploadsCount(User user) {
+        LocalDateTime baseline = baselineOf(user);
+        return baseline != null ? studyFileRepository.countByUploadedAtAfter(baseline) : 0L;
     }
 
     @Override
     @Transactional
-    public void markNoveltiesAsSeen(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
-
-        user.setLastLoginAt(LocalDateTime.now());
+    public void markNoveltiesAsSeen(User user) {
+        user.setNoveltiesSeenAt(LocalDateTime.now(clock));
         userRepository.save(user);
     }
 
-    private NoveltyFileItemDTO toNoveltyDTO(StudyFile file, LocalDateTime lastLoginAt) {
+    // Files uploaded after this are "new": the last time the user opened the feed, or account
+    // creation for users who never did, so a fresh account isn't flooded with the whole library.
+    // Deliberately not lastLoginAt, which every sign-in overwrites.
+    private LocalDateTime baselineOf(User user) {
+        return user.getNoveltiesSeenAt() != null ? user.getNoveltiesSeenAt() : user.getCreatedAt();
+    }
+
+    private NoveltyFileItemDTO toNoveltyDTO(StudyFile file, LocalDateTime baseline) {
         Reasoning reasoning = file.getReasoning();
         Category category = reasoning != null ? reasoning.getCategory() : null;
 
-        // File is marked new if user has a login timestamp and upload occurred after it
-        boolean isNew = (lastLoginAt != null && file.getUploadedAt() != null)
-                && file.getUploadedAt().isAfter(lastLoginAt);
+        boolean isNew = (baseline != null && file.getUploadedAt() != null)
+                && file.getUploadedAt().isAfter(baseline);
 
         Set<String> tagNames = file.getHashtags() != null
                 ? file.getHashtags().stream().map(Hashtag::getName).collect(Collectors.toSet())
