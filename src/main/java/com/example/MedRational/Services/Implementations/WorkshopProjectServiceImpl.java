@@ -1,12 +1,14 @@
 package com.example.MedRational.Services.Implementations;
 
 import com.example.MedRational.DTOs.CreateWorkshopProjectDTO;
+import com.example.MedRational.DTOs.DownloadableFile;
 import com.example.MedRational.DTOs.WorkshopAttachmentResponseDTO;
 import com.example.MedRational.DTOs.WorkshopProjectResponseDTO;
 import com.example.MedRational.Entities.User;
 import com.example.MedRational.Entities.WorkshopAttachment;
 import com.example.MedRational.Entities.WorkshopProject;
 import com.example.MedRational.Entities.enums.ProjectStatus;
+import com.example.MedRational.Preview.PreviewKind;
 import com.example.MedRational.Repositories.UserRepository;
 import com.example.MedRational.Repositories.WorkshopAttachmentRepository;
 import com.example.MedRational.Repositories.WorkshopProjectRepository;
@@ -28,6 +30,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -146,12 +149,34 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
         WorkshopAttachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Attachment not found with id: " + attachmentId));
 
-        String key = extractStorageKey(attachment.getFileUrl());
-        if (key != null) {
-            r2StorageService.deleteFile(key);
+        List<String> keys = storageKeysOf(attachment);
+        if (!keys.isEmpty()) {
+            r2StorageService.deleteFiles(keys);
         }
 
         attachmentRepository.delete(attachment);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DownloadableFile openAttachment(Long attachmentId) {
+        String notFound = "Attachment not found with id: " + attachmentId;
+        WorkshopAttachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException(notFound));
+        String key = attachment.storageKey();
+        if (key == null) {
+            throw new EntityNotFoundException(notFound);
+        }
+
+        // The bucket is private, so the file is streamed through the backend
+        String fileName = attachment.getFileName();
+        PreviewKind kind = PreviewKind.detect(fileName, null);
+        String contentType = switch (kind) {
+            case IMAGE -> PreviewKind.imageContentType(fileName, null);
+            case PDF -> "application/pdf";
+            default -> "application/octet-stream";
+        };
+        return new DownloadableFile(fileName, contentType, r2StorageService.downloadFileAsResource(key));
     }
 
     @Override
@@ -221,8 +246,7 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
                 .orElseThrow(() -> new EntityNotFoundException("Workshop project not found with id: " + projectId));
 
         List<String> keysToDelete = project.getAttachments().stream()
-                .map(a -> extractStorageKey(a.getFileUrl()))
-                .filter(k -> k != null && !k.isEmpty())
+                .flatMap(a -> storageKeysOf(a).stream())
                 .toList();
 
         if (!keysToDelete.isEmpty()) {
@@ -336,12 +360,14 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
                 .id(attachment.getId())
                 .fileName(attachment.getFileName())
                 .fileUrl(attachment.getFileUrl())
+                .previewable(PreviewKind.detect(attachment.getFileName(), null).isPreviewable())
                 .build();
     }
 
-    private String extractStorageKey(String fileUrl) {
-        if (fileUrl == null) return null;
-        int index = fileUrl.indexOf("WorkshopAttachments/");
-        return index != -1 ? fileUrl.substring(index) : null;
+    // The file and its cached preview, when there is one
+    private List<String> storageKeysOf(WorkshopAttachment attachment) {
+        return Stream.of(attachment.storageKey(), attachment.getPreviewStorageKey())
+                .filter(k -> k != null && !k.isEmpty())
+                .toList();
     }
 }
