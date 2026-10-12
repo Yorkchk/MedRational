@@ -21,6 +21,7 @@ public class WorkshopProjectResponseDTO {
     private ProjectType projectType;
     private ProjectStatus status;
     private String formLink; // Populated only when status == OPEN (or when requested by admin)
+    private Integer capacity; // null means no limit
     private LocalDateTime registrationOpensAt;
     private LocalDateTime registrationClosesAt;
     private LocalDateTime createdAt;
