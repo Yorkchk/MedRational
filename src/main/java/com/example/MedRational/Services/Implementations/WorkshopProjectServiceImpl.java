@@ -46,6 +46,10 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
         if (request.getRegistrationClosesAt().isBefore(request.getRegistrationOpensAt())) {
             throw new IllegalArgumentException("Registration closing time cannot be before opening time.");
         }
+        // A new project's registration is still ahead; a past time is almost always a mistyped date or AM/PM
+        if (!request.getRegistrationOpensAt().isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Registration opening time must be in the future.");
+        }
 
         User author = userRepository.findById(authorId)
                 .orElseThrow(() -> new EntityNotFoundException("Author user not found with id: " + authorId));
@@ -227,19 +231,33 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime tenMinutesFromNow = now.plusMinutes(10);
 
+        // Each alert is sent only while its moment is still ahead or just happened. A project whose
+        // times already passed (e.g. created in the past, or set back to UPCOMING by hand) is caught
+        // up silently instead of receiving every alert at once
+
         // 1. Check: 10 minutes BEFORE launch
         List<WorkshopProject> openingSoon = workshopProjectRepository.findProjectsDueForOpeningReminder(tenMinutesFromNow);
         for (WorkshopProject project : openingSoon) {
             project.setOpeningReminderSent(true);
-            workshopNotificationService.notifyOpeningSoon(project);
-            log.info("Dispatched 10-min opening reminder for project ID {}", project.getId());
+            if (project.getRegistrationOpensAt().isAfter(now)) {
+                workshopNotificationService.notifyOpeningSoon(project);
+                log.info("Dispatched 10-min opening reminder for project ID {}", project.getId());
+            }
         }
 
-        // 2. Check: Launch moment (UPCOMING -> OPEN)
+        // 2. Check: Launch moment (UPCOMING -> OPEN, or straight to CLOSED when its window already passed)
         List<WorkshopProject> toOpen = workshopProjectRepository.findProjectsReadyToOpen(now);
         for (WorkshopProject project : toOpen) {
-            project.setStatus(ProjectStatus.OPEN);
+            project.setOpeningReminderSent(true);
             project.setLaunchNotificationSent(true);
+            if (!project.getRegistrationClosesAt().isAfter(now)) {
+                project.setStatus(ProjectStatus.CLOSED);
+                project.setClosingReminderSent(true);
+                project.setClosedNotificationSent(true);
+                log.info("Project ID {} registration window already passed, closed without notifications", project.getId());
+                continue;
+            }
+            project.setStatus(ProjectStatus.OPEN);
             workshopNotificationService.notifyRegistrationOpened(project);
             log.info("Project ID {} transitioned to OPEN and launch notifications sent", project.getId());
         }
@@ -248,18 +266,22 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
         List<WorkshopProject> closingSoon = workshopProjectRepository.findProjectsDueForClosingReminder(tenMinutesFromNow);
         for (WorkshopProject project : closingSoon) {
             project.setClosingReminderSent(true);
-            workshopNotificationService.notifyClosingSoon(project);
-            log.info("Dispatched 10-min closing reminder for project ID {}", project.getId());
+            if (project.getRegistrationClosesAt().isAfter(now)) {
+                workshopNotificationService.notifyClosingSoon(project);
+                log.info("Dispatched 10-min closing reminder for project ID {}", project.getId());
+            }
         }
 
         // 4. Check: Closing moment (OPEN -> CLOSED)
         List<WorkshopProject> toClose = workshopProjectRepository.findProjectsReadyToClose(now);
         for (WorkshopProject project : toClose) {
             project.setStatus(ProjectStatus.CLOSED);
+            project.setClosingReminderSent(true);
             project.setClosedNotificationSent(true);
             workshopNotificationService.notifyRegistrationClosed(project);
             log.info("Project ID {} transitioned to CLOSED and closed notifications sent", project.getId());
-        }}
+        }
+    }
 
     // Inside com.example.MedRational.Services.Implementations.WorkshopProjectServiceImpl
 

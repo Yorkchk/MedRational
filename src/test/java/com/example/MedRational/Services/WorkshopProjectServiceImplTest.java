@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class WorkshopProjectServiceImplTest {
@@ -289,7 +290,10 @@ class WorkshopProjectServiceImplTest {
     @Test
     void schedulerSendsTenMinuteRemindersOnceAndLeavesTheStatusAlone() {
         WorkshopProject openingSoon = project(ProjectStatus.UPCOMING);
+        openingSoon.setRegistrationOpensAt(LocalDateTime.now().plusMinutes(9));
+        openingSoon.setRegistrationClosesAt(LocalDateTime.now().plusHours(2));
         WorkshopProject closingSoon = project(ProjectStatus.OPEN);
+        closingSoon.setRegistrationClosesAt(LocalDateTime.now().plusMinutes(9));
         when(projectRepository.findProjectsDueForOpeningReminder(any())).thenReturn(List.of(openingSoon));
         when(projectRepository.findProjectsDueForClosingReminder(any())).thenReturn(List.of(closingSoon));
 
@@ -303,6 +307,51 @@ class WorkshopProjectServiceImplTest {
         assertEquals(ProjectStatus.OPEN, closingSoon.getStatus());
         verify(notificationService, never()).notifyRegistrationOpened(any());
         verify(notificationService, never()).notifyRegistrationClosed(any());
+    }
+
+    // E.g. a project whose dates are 12 hours in the past, set back to UPCOMING: every query
+    // returns it in the same run. It must be caught up silently, not get four alerts at once
+    @Test
+    void projectWhoseWholeWindowPassedClosesWithoutAnyAlert() {
+        WorkshopProject stale = project(ProjectStatus.UPCOMING);
+        stale.setRegistrationOpensAt(LocalDateTime.now().minusHours(12));
+        stale.setRegistrationClosesAt(LocalDateTime.now().minusHours(12).plusMinutes(1));
+        when(projectRepository.findProjectsDueForOpeningReminder(any())).thenReturn(List.of(stale));
+        when(projectRepository.findProjectsReadyToOpen(any())).thenReturn(List.of(stale));
+
+        service.processAutomaticStateTransitions();
+
+        assertEquals(ProjectStatus.CLOSED, stale.getStatus());
+        assertTrue(stale.isOpeningReminderSent());
+        assertTrue(stale.isLaunchNotificationSent());
+        assertTrue(stale.isClosingReminderSent());
+        assertTrue(stale.isClosedNotificationSent());
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    void reminderWhoseMomentPassedIsSkipped() {
+        // Opening was 5 minutes ago and the project is still UPCOMING: open it, but don't say "opens in 10 min"
+        WorkshopProject late = project(ProjectStatus.UPCOMING);
+        late.setRegistrationOpensAt(LocalDateTime.now().minusMinutes(5));
+        when(projectRepository.findProjectsDueForOpeningReminder(any())).thenReturn(List.of(late));
+        when(projectRepository.findProjectsReadyToOpen(any())).thenReturn(List.of(late));
+
+        service.processAutomaticStateTransitions();
+
+        verify(notificationService, never()).notifyOpeningSoon(any());
+        verify(notificationService).notifyRegistrationOpened(late);
+        assertEquals(ProjectStatus.OPEN, late.getStatus());
+    }
+
+    @Test
+    void creatingAProjectThatAlreadyOpenedIsRejected() {
+        CreateWorkshopProjectDTO request = edit(LocalDateTime.now().minusHours(12), LocalDateTime.now().minusHours(11));
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> service.createProject(request, AUTHOR_ID));
+        assertEquals("Registration opening time must be in the future.", error.getMessage());
+        verify(projectRepository, never()).save(any());
     }
 
     @Test
