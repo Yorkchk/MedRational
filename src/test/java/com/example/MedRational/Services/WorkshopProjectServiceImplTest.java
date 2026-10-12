@@ -1,8 +1,10 @@
 package com.example.MedRational.Services;
 
 import com.example.MedRational.DTOs.CreateWorkshopProjectDTO;
+import com.example.MedRational.DTOs.DownloadableFile;
 import com.example.MedRational.DTOs.WorkshopProjectResponseDTO;
 import com.example.MedRational.Entities.User;
+import com.example.MedRational.Entities.WorkshopAttachment;
 import com.example.MedRational.Entities.WorkshopProject;
 import com.example.MedRational.Entities.enums.ProjectStatus;
 import com.example.MedRational.Entities.enums.ProjectType;
@@ -16,14 +18,18 @@ import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -429,5 +435,77 @@ class WorkshopProjectServiceImplTest {
         verify(projectRepository).findProjectsDueForOpeningReminder(threshold.capture());
         assertTrue(!threshold.getValue().isBefore(before.plusMinutes(10)));
         assertTrue(threshold.getValue().isBefore(before.plusMinutes(11)));
+    }
+
+    // --- attachments ------------------------------------------------------------------------------
+
+    private static final long ATTACHMENT_ID = 9L;
+    private static final String ATTACHMENT_KEY = "WorkshopAttachments/Project_5/ab12cd34-program.pdf";
+
+    private WorkshopAttachment attachment(String previewStorageKey) {
+        return WorkshopAttachment.builder()
+                .id(ATTACHMENT_ID)
+                .fileName("program.pdf")
+                // The private R2 endpoint, which answers 400 to the unsigned requests of a download
+                .fileUrl("https://account.r2.cloudflarestorage.com/bucket/" + ATTACHMENT_KEY)
+                .previewStorageKey(previewStorageKey)
+                .build();
+    }
+
+    @Test
+    void attachmentIsDownloadedThroughTheBackendFromItsStorageKey() {
+        when(attachmentRepository.findById(ATTACHMENT_ID)).thenReturn(Optional.of(attachment(null)));
+        Resource stored = new ByteArrayResource(new byte[]{1, 2});
+        when(r2StorageService.downloadFileAsResource(ATTACHMENT_KEY)).thenReturn(stored);
+
+        DownloadableFile file = service.openAttachment(ATTACHMENT_ID);
+
+        assertEquals("program.pdf", file.getFileName());
+        assertEquals("application/pdf", file.getContentType());
+        assertSame(stored, file.getResource());
+    }
+
+    @Test
+    void downloadingAMissingAttachmentIsNotFound() {
+        when(attachmentRepository.findById(ATTACHMENT_ID)).thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class, () -> service.openAttachment(ATTACHMENT_ID));
+    }
+
+    @Test
+    void attachmentsSayWhetherTheyCanBePreviewed() {
+        WorkshopProject project = project(ProjectStatus.OPEN);
+        WorkshopAttachment pdf = attachment(null);
+        WorkshopAttachment zip = attachment(null);
+        zip.setFileName("bundle.zip");
+        project.setAttachments(List.of(pdf, zip));
+        when(projectRepository.findById(PROJECT_ID)).thenReturn(Optional.of(project));
+
+        WorkshopProjectResponseDTO dto = service.getProjectById(PROJECT_ID, false);
+
+        assertTrue(dto.getAttachments().get(0).isPreviewable());
+        assertFalse(dto.getAttachments().get(1).isPreviewable());
+    }
+
+    @Test
+    void removingAnAttachmentAlsoDeletesItsCachedPreview() {
+        WorkshopAttachment attachment = attachment("Previews/" + ATTACHMENT_KEY + ".pdf");
+        when(attachmentRepository.findById(ATTACHMENT_ID)).thenReturn(Optional.of(attachment));
+
+        service.removeAttachment(ATTACHMENT_ID);
+
+        verify(r2StorageService).deleteFiles(List.of(ATTACHMENT_KEY, "Previews/" + ATTACHMENT_KEY + ".pdf"));
+        verify(attachmentRepository).delete(attachment);
+    }
+
+    @Test
+    void deletingAProjectAlsoDeletesTheCachedPreviews() {
+        WorkshopProject project = project(ProjectStatus.OPEN);
+        project.setAttachments(new ArrayList<>(List.of(attachment("Previews/p.pdf"))));
+        when(projectRepository.findById(PROJECT_ID)).thenReturn(Optional.of(project));
+
+        service.deleteProject(PROJECT_ID);
+
+        verify(r2StorageService).deleteFiles(List.of(ATTACHMENT_KEY, "Previews/p.pdf"));
     }
 }
