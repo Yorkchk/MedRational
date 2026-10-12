@@ -28,10 +28,12 @@ public interface WorkshopProjectRepository extends JpaRepository<WorkshopProject
     """)
     List<WorkshopProject> findProjectsDueForOpeningReminder(@Param("threshold") LocalDateTime threshold);
 
-    // 2. Launch moment (UPCOMING -> OPEN)
+    // 2. Launch moment (UPCOMING -> OPEN). launchNotificationSent marks the moment as handled, so a
+    // project an admin set back to UPCOMING after it opened stays upcoming
     @Query("""
         SELECT p FROM WorkshopProject p 
         WHERE p.status = 'UPCOMING' 
+          AND p.launchNotificationSent = false 
           AND p.registrationOpensAt <= :now
     """)
     List<WorkshopProject> findProjectsReadyToOpen(@Param("now") LocalDateTime now);
@@ -45,10 +47,12 @@ public interface WorkshopProjectRepository extends JpaRepository<WorkshopProject
     """)
     List<WorkshopProject> findProjectsDueForClosingReminder(@Param("threshold") LocalDateTime threshold);
 
-    // 4. Closing moment (OPEN -> CLOSED)
+    // 4. Closing moment (OPEN -> CLOSED). closedNotificationSent marks the moment as handled, so a
+    // project an admin reopened after its deadline stays open
     @Query("""
         SELECT p FROM WorkshopProject p 
         WHERE p.status = 'OPEN' 
+          AND p.closedNotificationSent = false 
           AND p.registrationClosesAt <= :now
     """)
     List<WorkshopProject> findProjectsReadyToClose(@Param("now") LocalDateTime now);

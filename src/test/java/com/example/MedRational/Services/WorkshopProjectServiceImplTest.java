@@ -203,6 +203,71 @@ class WorkshopProjectServiceImplTest {
         assertFalse(project.isClosingReminderSent());
     }
 
+    // The scheduler only closes OPEN projects whose closedNotificationSent is false: marking the
+    // passed deadline as handled keeps the admin's reopen instead of closing it again a minute later
+    @Test
+    void reopeningAfterTheDeadlineIsNotUndoneByTheScheduler() {
+        WorkshopProject project = project(ProjectStatus.CLOSED);
+        project.setRegistrationClosesAt(LocalDateTime.now().minusMinutes(5));
+        project.setClosingReminderSent(true);
+        project.setClosedNotificationSent(true);
+        stored(project);
+
+        service.updateProjectStatus(PROJECT_ID, ProjectStatus.OPEN);
+
+        assertEquals(ProjectStatus.OPEN, project.getStatus());
+        assertTrue(project.isClosingReminderSent());
+        assertTrue(project.isClosedNotificationSent());
+    }
+
+    @Test
+    void backToUpcomingAfterOpeningStaysUpcoming() {
+        WorkshopProject project = project(ProjectStatus.OPEN);
+        project.setOpeningReminderSent(true);
+        project.setLaunchNotificationSent(true);
+        stored(project);
+
+        service.updateProjectStatus(PROJECT_ID, ProjectStatus.UPCOMING);
+
+        assertEquals(ProjectStatus.UPCOMING, project.getStatus());
+        // Opening already passed: handled, so the scheduler doesn't reopen it
+        assertTrue(project.isOpeningReminderSent());
+        assertTrue(project.isLaunchNotificationSent());
+        // The deadline is still ahead
+        assertFalse(project.isClosingReminderSent());
+        assertFalse(project.isClosedNotificationSent());
+    }
+
+    @Test
+    void backToUpcomingBeforeOpeningStillOpensOnTime() {
+        // Opened early by hand, then set back: the scheduler should open it at its date
+        WorkshopProject project = project(ProjectStatus.OPEN);
+        project.setRegistrationOpensAt(LocalDateTime.now().plusDays(1));
+        project.setRegistrationClosesAt(LocalDateTime.now().plusDays(2));
+        project.setOpeningReminderSent(true);
+        project.setLaunchNotificationSent(true);
+        stored(project);
+
+        service.updateProjectStatus(PROJECT_ID, ProjectStatus.UPCOMING);
+
+        assertFalse(project.isOpeningReminderSent());
+        assertFalse(project.isLaunchNotificationSent());
+        assertFalse(project.isClosingReminderSent());
+        assertFalse(project.isClosedNotificationSent());
+    }
+
+    @Test
+    void openingEarlyStillClosesAtTheDeadline() {
+        WorkshopProject project = project(ProjectStatus.UPCOMING);
+        project.setRegistrationOpensAt(LocalDateTime.now().plusDays(1));
+        project.setRegistrationClosesAt(LocalDateTime.now().plusDays(2));
+        stored(project);
+
+        service.updateProjectStatus(PROJECT_ID, ProjectStatus.OPEN);
+
+        assertFalse(project.isClosedNotificationSent());
+    }
+
     @Test
     void backToUpcomingAnnouncesNothing() {
         stored(project(ProjectStatus.OPEN));
