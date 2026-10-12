@@ -3,8 +3,11 @@ package com.example.MedRational;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
+// Runs WorkshopProjectServiceImpl.processAutomaticStateTransitions (status changes and reminders)
+@EnableScheduling
 public class MedRationalApplication {
 
 	public static void main(String[] args) {

@@ -46,6 +46,11 @@ public class WorkshopProject {
     @Column(name = "form_link", length = 1000)
     private String formLink;
 
+    // Number of places; null means no limit. Informational only: sign-ups happen on the form link,
+    // so an admin closes registration early through the status override once it is full
+    @Column(name = "capacity")
+    private Integer capacity;
+
     @Column(name = "registration_opens_at", nullable = false)
     private LocalDateTime registrationOpensAt;
 

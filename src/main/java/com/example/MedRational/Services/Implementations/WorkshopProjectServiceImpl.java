@@ -1,12 +1,14 @@
 package com.example.MedRational.Services.Implementations;
 
 import com.example.MedRational.DTOs.CreateWorkshopProjectDTO;
+import com.example.MedRational.DTOs.DownloadableFile;
 import com.example.MedRational.DTOs.WorkshopAttachmentResponseDTO;
 import com.example.MedRational.DTOs.WorkshopProjectResponseDTO;
 import com.example.MedRational.Entities.User;
 import com.example.MedRational.Entities.WorkshopAttachment;
 import com.example.MedRational.Entities.WorkshopProject;
 import com.example.MedRational.Entities.enums.ProjectStatus;
+import com.example.MedRational.Preview.PreviewKind;
 import com.example.MedRational.Repositories.UserRepository;
 import com.example.MedRational.Repositories.WorkshopAttachmentRepository;
 import com.example.MedRational.Repositories.WorkshopProjectRepository;
@@ -28,6 +30,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -46,19 +49,16 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
         if (request.getRegistrationClosesAt().isBefore(request.getRegistrationOpensAt())) {
             throw new IllegalArgumentException("Registration closing time cannot be before opening time.");
         }
+        // A new project's registration is still ahead; a past time is almost always a mistyped date or AM/PM
+        if (!request.getRegistrationOpensAt().isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Registration opening time must be in the future.");
+        }
 
         User author = userRepository.findById(authorId)
                 .orElseThrow(() -> new EntityNotFoundException("Author user not found with id: " + authorId));
 
-        LocalDateTime now = LocalDateTime.now();
-        ProjectStatus initialStatus;
-        if (now.isBefore(request.getRegistrationOpensAt())) {
-            initialStatus = ProjectStatus.UPCOMING;
-        } else if (now.isBefore(request.getRegistrationClosesAt())) {
-            initialStatus = ProjectStatus.OPEN;
-        } else {
-            initialStatus = ProjectStatus.CLOSED;
-        }
+        ProjectStatus initialStatus = statusFor(
+                request.getRegistrationOpensAt(), request.getRegistrationClosesAt(), LocalDateTime.now());
 
         WorkshopProject project = WorkshopProject.builder()
                 .title(request.getTitle().trim())
@@ -66,11 +66,50 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
                 .projectType(request.getProjectType())
                 .status(initialStatus)
                 .formLink(request.getFormLink())
+                .capacity(request.getCapacity())
                 .registrationOpensAt(request.getRegistrationOpensAt())
                 .registrationClosesAt(request.getRegistrationClosesAt())
                 .author(author)
                 .attachments(new ArrayList<>())
                 .build();
+
+        return mapToDTO(workshopProjectRepository.save(project), true);
+    }
+
+    @Override
+    @Transactional
+    public WorkshopProjectResponseDTO updateProject(Long projectId, CreateWorkshopProjectDTO request) {
+        if (request.getRegistrationClosesAt().isBefore(request.getRegistrationOpensAt())) {
+            throw new IllegalArgumentException("Registration closing time cannot be before opening time.");
+        }
+
+        WorkshopProject project = workshopProjectRepository.findById(projectId)
+                .orElseThrow(() -> new EntityNotFoundException("Workshop project not found with id: " + projectId));
+
+        project.setTitle(request.getTitle().trim());
+        project.setDescription(request.getDescription().trim());
+        project.setProjectType(request.getProjectType());
+        project.setFormLink(request.getFormLink());
+        project.setCapacity(request.getCapacity());
+
+        // New dates mean a new schedule: the status follows them and the reminders are sent again for
+        // moments still ahead. Unchanged dates keep the status, so a manual override (e.g. closed early
+        // because the form is full) survives editing the description
+        boolean datesChanged = !request.getRegistrationOpensAt().equals(project.getRegistrationOpensAt())
+                || !request.getRegistrationClosesAt().equals(project.getRegistrationClosesAt());
+        if (datesChanged) {
+            LocalDateTime now = LocalDateTime.now();
+            project.setRegistrationOpensAt(request.getRegistrationOpensAt());
+            project.setRegistrationClosesAt(request.getRegistrationClosesAt());
+            project.setStatus(statusFor(project.getRegistrationOpensAt(), project.getRegistrationClosesAt(), now));
+
+            boolean opened = !project.getRegistrationOpensAt().isAfter(now);
+            boolean closed = !project.getRegistrationClosesAt().isAfter(now);
+            project.setOpeningReminderSent(opened);
+            project.setLaunchNotificationSent(opened);
+            project.setClosingReminderSent(closed);
+            project.setClosedNotificationSent(closed);
+        }
 
         return mapToDTO(workshopProjectRepository.save(project), true);
     }
@@ -110,12 +149,34 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
         WorkshopAttachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Attachment not found with id: " + attachmentId));
 
-        String key = extractStorageKey(attachment.getFileUrl());
-        if (key != null) {
-            r2StorageService.deleteFile(key);
+        List<String> keys = storageKeysOf(attachment);
+        if (!keys.isEmpty()) {
+            r2StorageService.deleteFiles(keys);
         }
 
         attachmentRepository.delete(attachment);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DownloadableFile openAttachment(Long attachmentId) {
+        String notFound = "Attachment not found with id: " + attachmentId;
+        WorkshopAttachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException(notFound));
+        String key = attachment.storageKey();
+        if (key == null) {
+            throw new EntityNotFoundException(notFound);
+        }
+
+        // The bucket is private, so the file is streamed through the backend
+        String fileName = attachment.getFileName();
+        PreviewKind kind = PreviewKind.detect(fileName, null);
+        String contentType = switch (kind) {
+            case IMAGE -> PreviewKind.imageContentType(fileName, null);
+            case PDF -> "application/pdf";
+            default -> "application/octet-stream";
+        };
+        return new DownloadableFile(fileName, contentType, r2StorageService.downloadFileAsResource(key));
     }
 
     @Override
@@ -146,7 +207,35 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
         WorkshopProject project = workshopProjectRepository.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Workshop project not found with id: " + projectId));
 
+        if (project.getStatus() == targetStatus) {
+            return mapToDTO(project, true);
+        }
         project.setStatus(targetStatus);
+
+        // A manual status stays until the next date still ahead: moments already passed are marked
+        // handled so the scheduler doesn't undo the admin's choice, while future ones stay due.
+        // A manual open or close is announced like the scheduler does (WORKSHOP_LAUNCH / WORKSHOP_CLOSED),
+        // and marked sent so the scheduler doesn't repeat it. Back to UPCOMING announces nothing
+        LocalDateTime now = LocalDateTime.now();
+        boolean closePassed = !project.getRegistrationClosesAt().isAfter(now);
+        if (targetStatus == ProjectStatus.OPEN) {
+            project.setOpeningReminderSent(true);
+            project.setLaunchNotificationSent(true);
+            project.setClosingReminderSent(closePassed);
+            project.setClosedNotificationSent(closePassed);
+            workshopNotificationService.notifyRegistrationOpened(project);
+        } else if (targetStatus == ProjectStatus.UPCOMING) {
+            boolean openPassed = !project.getRegistrationOpensAt().isAfter(now);
+            project.setOpeningReminderSent(openPassed);
+            project.setLaunchNotificationSent(openPassed);
+            project.setClosingReminderSent(closePassed);
+            project.setClosedNotificationSent(closePassed);
+        } else if (targetStatus == ProjectStatus.CLOSED) {
+            project.setClosingReminderSent(true);
+            project.setClosedNotificationSent(true);
+            workshopNotificationService.notifyRegistrationClosed(project);
+        }
+
         return mapToDTO(workshopProjectRepository.save(project), true);
     }
 
@@ -157,8 +246,7 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
                 .orElseThrow(() -> new EntityNotFoundException("Workshop project not found with id: " + projectId));
 
         List<String> keysToDelete = project.getAttachments().stream()
-                .map(a -> extractStorageKey(a.getFileUrl()))
-                .filter(k -> k != null && !k.isEmpty())
+                .flatMap(a -> storageKeysOf(a).stream())
                 .toList();
 
         if (!keysToDelete.isEmpty()) {
@@ -168,26 +256,41 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
         workshopProjectRepository.delete(project);
     }
 
-    @Scheduled(fixedRate = 60000) // Runs every minute
+    // At second 0 of every minute: picked times are whole minutes, so a project switches right on time
+    @Scheduled(cron = "0 * * * * *")
     @Transactional
     @Override
     public void processAutomaticStateTransitions() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime tenMinutesFromNow = now.plusMinutes(10);
 
+        // Each alert is sent only while its moment is still ahead or just happened. A project whose
+        // times already passed (e.g. created in the past, or set back to UPCOMING by hand) is caught
+        // up silently instead of receiving every alert at once
+
         // 1. Check: 10 minutes BEFORE launch
         List<WorkshopProject> openingSoon = workshopProjectRepository.findProjectsDueForOpeningReminder(tenMinutesFromNow);
         for (WorkshopProject project : openingSoon) {
             project.setOpeningReminderSent(true);
-            workshopNotificationService.notifyOpeningSoon(project);
-            log.info("Dispatched 10-min opening reminder for project ID {}", project.getId());
+            if (project.getRegistrationOpensAt().isAfter(now)) {
+                workshopNotificationService.notifyOpeningSoon(project);
+                log.info("Dispatched 10-min opening reminder for project ID {}", project.getId());
+            }
         }
 
-        // 2. Check: Launch moment (UPCOMING -> OPEN)
+        // 2. Check: Launch moment (UPCOMING -> OPEN, or straight to CLOSED when its window already passed)
         List<WorkshopProject> toOpen = workshopProjectRepository.findProjectsReadyToOpen(now);
         for (WorkshopProject project : toOpen) {
-            project.setStatus(ProjectStatus.OPEN);
+            project.setOpeningReminderSent(true);
             project.setLaunchNotificationSent(true);
+            if (!project.getRegistrationClosesAt().isAfter(now)) {
+                project.setStatus(ProjectStatus.CLOSED);
+                project.setClosingReminderSent(true);
+                project.setClosedNotificationSent(true);
+                log.info("Project ID {} registration window already passed, closed without notifications", project.getId());
+                continue;
+            }
+            project.setStatus(ProjectStatus.OPEN);
             workshopNotificationService.notifyRegistrationOpened(project);
             log.info("Project ID {} transitioned to OPEN and launch notifications sent", project.getId());
         }
@@ -196,18 +299,22 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
         List<WorkshopProject> closingSoon = workshopProjectRepository.findProjectsDueForClosingReminder(tenMinutesFromNow);
         for (WorkshopProject project : closingSoon) {
             project.setClosingReminderSent(true);
-            workshopNotificationService.notifyClosingSoon(project);
-            log.info("Dispatched 10-min closing reminder for project ID {}", project.getId());
+            if (project.getRegistrationClosesAt().isAfter(now)) {
+                workshopNotificationService.notifyClosingSoon(project);
+                log.info("Dispatched 10-min closing reminder for project ID {}", project.getId());
+            }
         }
 
         // 4. Check: Closing moment (OPEN -> CLOSED)
         List<WorkshopProject> toClose = workshopProjectRepository.findProjectsReadyToClose(now);
         for (WorkshopProject project : toClose) {
             project.setStatus(ProjectStatus.CLOSED);
+            project.setClosingReminderSent(true);
             project.setClosedNotificationSent(true);
             workshopNotificationService.notifyRegistrationClosed(project);
             log.info("Project ID {} transitioned to CLOSED and closed notifications sent", project.getId());
-        }}
+        }
+    }
 
     // Inside com.example.MedRational.Services.Implementations.WorkshopProjectServiceImpl
 
@@ -230,6 +337,7 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
                 .projectType(project.getProjectType())
                 .status(project.getStatus())
                 .formLink(visibleFormLink)
+                .capacity(project.getCapacity())
                 .registrationOpensAt(project.getRegistrationOpensAt())
                 .registrationClosesAt(project.getRegistrationClosesAt())
                 .createdAt(project.getCreatedAt())
@@ -237,17 +345,29 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
                 .build();
     }
 
+    private ProjectStatus statusFor(LocalDateTime opensAt, LocalDateTime closesAt, LocalDateTime now) {
+        if (now.isBefore(opensAt)) {
+            return ProjectStatus.UPCOMING;
+        }
+        if (now.isBefore(closesAt)) {
+            return ProjectStatus.OPEN;
+        }
+        return ProjectStatus.CLOSED;
+    }
+
     private WorkshopAttachmentResponseDTO mapAttachmentToDTO(WorkshopAttachment attachment) {
         return WorkshopAttachmentResponseDTO.builder()
                 .id(attachment.getId())
                 .fileName(attachment.getFileName())
                 .fileUrl(attachment.getFileUrl())
+                .previewable(PreviewKind.detect(attachment.getFileName(), null).isPreviewable())
                 .build();
     }
 
-    private String extractStorageKey(String fileUrl) {
-        if (fileUrl == null) return null;
-        int index = fileUrl.indexOf("WorkshopAttachments/");
-        return index != -1 ? fileUrl.substring(index) : null;
+    // The file and its cached preview, when there is one
+    private List<String> storageKeysOf(WorkshopAttachment attachment) {
+        return Stream.of(attachment.storageKey(), attachment.getPreviewStorageKey())
+                .filter(k -> k != null && !k.isEmpty())
+                .toList();
     }
 }
