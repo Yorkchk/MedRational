@@ -187,16 +187,24 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
         }
         project.setStatus(targetStatus);
 
-        // Announce a manual open or close like the scheduler does (WORKSHOP_LAUNCH / WORKSHOP_CLOSED),
-        // and mark it sent so the scheduler doesn't repeat it. Back to UPCOMING announces nothing
+        // A manual status stays until the next date still ahead: moments already passed are marked
+        // handled so the scheduler doesn't undo the admin's choice, while future ones stay due.
+        // A manual open or close is announced like the scheduler does (WORKSHOP_LAUNCH / WORKSHOP_CLOSED),
+        // and marked sent so the scheduler doesn't repeat it. Back to UPCOMING announces nothing
+        LocalDateTime now = LocalDateTime.now();
+        boolean closePassed = !project.getRegistrationClosesAt().isAfter(now);
         if (targetStatus == ProjectStatus.OPEN) {
             project.setOpeningReminderSent(true);
             project.setLaunchNotificationSent(true);
-            // Reopened: the closing reminder is due again if the deadline is still ahead
-            boolean closesLater = project.getRegistrationClosesAt().isAfter(LocalDateTime.now());
-            project.setClosingReminderSent(!closesLater);
-            project.setClosedNotificationSent(false);
+            project.setClosingReminderSent(closePassed);
+            project.setClosedNotificationSent(closePassed);
             workshopNotificationService.notifyRegistrationOpened(project);
+        } else if (targetStatus == ProjectStatus.UPCOMING) {
+            boolean openPassed = !project.getRegistrationOpensAt().isAfter(now);
+            project.setOpeningReminderSent(openPassed);
+            project.setLaunchNotificationSent(openPassed);
+            project.setClosingReminderSent(closePassed);
+            project.setClosedNotificationSent(closePassed);
         } else if (targetStatus == ProjectStatus.CLOSED) {
             project.setClosingReminderSent(true);
             project.setClosedNotificationSent(true);
@@ -224,7 +232,8 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
         workshopProjectRepository.delete(project);
     }
 
-    @Scheduled(fixedRate = 60000) // Runs every minute
+    // At second 0 of every minute: picked times are whole minutes, so a project switches right on time
+    @Scheduled(cron = "0 * * * * *")
     @Transactional
     @Override
     public void processAutomaticStateTransitions() {
