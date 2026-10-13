@@ -25,8 +25,16 @@ public class User {
     @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
+    // Kept as "first last" so code reading fullName keeps working. Accounts created before the
+    // split have null first/last names; UserNames derives them from fullName.
     @Column(name = "full_name", length = 255)
     private String fullName;
+
+    @Column(name = "first_name", length = 50)
+    private String firstName;
+
+    @Column(name = "last_name", length = 50)
+    private String lastName;
 
     @Column(name = "phone_number", length = 50)
     private String phoneNumber;
@@ -41,6 +49,10 @@ public class User {
 
     @Column(name = "otp_expiry")
     private LocalDateTime otpExpiry;
+
+    // New address waiting for its emailed code; the email only changes once the code is confirmed
+    @Column(name = "pending_email", length = 255)
+    private String pendingEmail;
 
         @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
