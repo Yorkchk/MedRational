@@ -6,6 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Workshop push notifications carry localization keys (`title_loc_key`/`body_loc_key`, with the project title as the argument), so the Android app shows them in French or English. The English text stays as a fallback.
 - Profile endpoints for the signed-in user under `/api/v1/users/me`:
   - `GET` and `PUT` (first name, last name, phone) with no code needed.
   - Change the password with a code emailed to the current address (`POST /password/code`, then `PUT /password`).

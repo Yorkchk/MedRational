@@ -29,7 +29,7 @@ public class FirebaseConfig {
             @Value("${FIREBASE_CREDENTIALS:}") String credentialsPath) {
         if (credentialsPath.isBlank()) {
             log.warn("FIREBASE_CREDENTIALS is not set: push notifications are disabled");
-            return (topic, title, body, data) -> log.info("Push disabled, skipped '{}' to topic '{}'", title, topic);
+            return (topic, message, data) -> log.info("Push disabled, skipped '{}' to topic '{}'", message.title(), topic);
         }
         try (InputStream credentials = new FileInputStream(credentialsPath)) {
             FirebaseOptions options = FirebaseOptions.builder()
