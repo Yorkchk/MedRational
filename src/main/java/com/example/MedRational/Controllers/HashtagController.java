@@ -25,7 +25,7 @@ public class HashtagController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Set<HashtagResponseDTO>> attachHashtags(
             @PathVariable Long fileId,
             @Valid @RequestBody AttachHashtagsRequestDTO request) {
@@ -33,7 +33,7 @@ public class HashtagController {
     }
 
     @DeleteMapping("/{hashtagId}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> removeHashtag(
             @PathVariable Long fileId,
             @PathVariable Long hashtagId) {

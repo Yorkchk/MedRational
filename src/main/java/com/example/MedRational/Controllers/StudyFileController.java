@@ -4,6 +4,8 @@ import com.example.MedRational.DTOs.FileSearchFilterDTO;
 import com.example.MedRational.DTOs.StudyFileResponse;
 import com.example.MedRational.DTOs.StudyFileResponseDTO;
 import com.example.MedRational.DTOs.DownloadableFile;
+import com.example.MedRational.Security.CurrentUserGuard;
+import com.example.MedRational.Services.Interfaces.FileViewService;
 import com.example.MedRational.Services.Interfaces.FilePreviewService;
 import com.example.MedRational.Services.Interfaces.StudyFileService;
 import org.springframework.core.io.Resource;
@@ -33,6 +35,8 @@ public class StudyFileController {
 
     private final StudyFileService studyFileService;
     private final FilePreviewService filePreviewService;
+    private final FileViewService fileViewService;
+    private final CurrentUserGuard currentUserGuard;
 
     // Public / Student: List files attached to a reasoning
     @GetMapping("/reasoning/{reasoningId}")
@@ -50,6 +54,13 @@ public class StudyFileController {
                         .filename(preview.getFileName(), StandardCharsets.UTF_8).build().toString())
                 .cacheControl(CacheControl.maxAge(Duration.ofHours(1)).cachePrivate())
                 .body(preview.getResource());
+    }
+
+    // Signed-in users: the app calls this when a file is opened, for the admin statistics
+    @PostMapping("/{id}/views")
+    public ResponseEntity<Void> recordView(@PathVariable Long id) {
+        fileViewService.recordView(currentUserGuard.requireCurrentUser(), id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/search")
