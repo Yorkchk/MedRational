@@ -16,6 +16,13 @@ public class UserRegisterRequestDTO {
     @Size(max = 100, message = "Full name must not exceed 100 characters") // 50 for first + 50 for last
     private String fullName;
 
+    // Optional: older apps only send fullName, which is then split at the first space
+    @Size(max = 50, message = "First name must not exceed 50 characters")
+    private String firstName;
+
+    @Size(max = 50, message = "Last name must not exceed 50 characters")
+    private String lastName;
+
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
     private String email;

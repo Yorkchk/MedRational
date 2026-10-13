@@ -13,9 +13,13 @@ public class EmailServiceImpl implements EmailService {
     private final JavaMailSender mailSender;
 
     public void sendOtpEmail(String toEmail, String otp) {
+        sendOtpEmail(toEmail, otp, "Your MedRational Admin Login Code");
+    }
+
+    public void sendOtpEmail(String toEmail, String otp, String subject) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(toEmail);
-        message.setSubject("Your MedRational Admin Login Code");
+        message.setSubject(subject);
         message.setText("Your one-time verification code is: " + otp + "\n\nThis code expires in 5 minutes.");
         mailSender.send(message);
     }
