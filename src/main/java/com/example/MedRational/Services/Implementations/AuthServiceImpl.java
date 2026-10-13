@@ -7,6 +7,7 @@ import com.example.MedRational.Repositories.UserRepository;
 import com.example.MedRational.Security.JwtUtil;
 import com.example.MedRational.Services.Interfaces.AuthService;
 import com.example.MedRational.Services.Interfaces.EmailService;
+import com.example.MedRational.Services.Support.UserNames;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -124,6 +125,13 @@ public class AuthServiceImpl implements AuthService {
 
         // Update profile info
         user.setFullName(cleanFullName);
+        boolean hasSplitNames = request.getFirstName() != null && !request.getFirstName().isBlank()
+                && request.getLastName() != null && !request.getLastName().isBlank();
+        String[] names = hasSplitNames
+                ? new String[]{request.getFirstName().trim(), request.getLastName().trim()}
+                : UserNames.split(cleanFullName);
+        user.setFirstName(names[0]);
+        user.setLastName(names[1]);
 
         // 1. Save phone number if provided
         if (request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank()) {
