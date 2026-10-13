@@ -11,5 +11,5 @@ public interface PushNotificationService {
     // Every signed-in app is subscribed to it
     String WORKSHOPS_TOPIC = "workshops";
 
-    void sendToTopic(String topic, String title, String body, Map<String, String> data);
+    void sendToTopic(String topic, PushMessage message, Map<String, String> data);
 }
