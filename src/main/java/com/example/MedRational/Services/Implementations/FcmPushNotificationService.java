@@ -1,5 +1,6 @@
 package com.example.MedRational.Services.Implementations;
 
+import com.example.MedRational.Services.Interfaces.PushMessage;
 import com.example.MedRational.Services.Interfaces.PushNotificationService;
 import com.google.firebase.messaging.AndroidConfig;
 import com.google.firebase.messaging.AndroidNotification;
@@ -25,25 +26,32 @@ public class FcmPushNotificationService implements PushNotificationService {
     }
 
     @Override
-    public void sendToTopic(String topic, String title, String body, Map<String, String> data) {
-        Message message = buildMessage(topic, title, body, data);
+    public void sendToTopic(String topic, PushMessage push, Map<String, String> data) {
+        Message message = buildMessage(topic, push, data);
         try {
             String id = messaging.send(message);
-            log.info("Sent push '{}' to topic '{}' ({})", title, topic, id);
+            log.info("Sent push '{}' to topic '{}' ({})", push.title(), topic, id);
         } catch (FirebaseMessagingException | RuntimeException e) {
-            log.error("Failed to send push '{}' to topic '{}': {}", title, topic, e.getMessage());
+            log.error("Failed to send push '{}' to topic '{}': {}", push.title(), topic, e.getMessage());
         }
     }
 
-    static Message buildMessage(String topic, String title, String body, Map<String, String> data) {
+    public static Message buildMessage(String topic, PushMessage push, Map<String, String> data) {
         return Message.builder()
                 .setTopic(topic)
                 // The notification part is shown by Android itself while the app is closed
-                .setNotification(Notification.builder().setTitle(title).setBody(body).build())
+                .setNotification(Notification.builder().setTitle(push.title()).setBody(push.body()).build())
                 .putAllData(data)
                 .setAndroidConfig(AndroidConfig.builder()
                         .setPriority(AndroidConfig.Priority.HIGH)
-                        .setNotification(AndroidNotification.builder().setChannelId(ANDROID_CHANNEL_ID).build())
+                        // The app translates the text from these keys, in the language the user picked
+                        .setNotification(AndroidNotification.builder()
+                                .setChannelId(ANDROID_CHANNEL_ID)
+                                .setTitleLocalizationKey(push.titleLocalizationKey())
+                                .addAllTitleLocalizationArgs(push.localizationArgs())
+                                .setBodyLocalizationKey(push.bodyLocalizationKey())
+                                .addAllBodyLocalizationArgs(push.localizationArgs())
+                                .build())
                         .build())
                 .build();
     }
