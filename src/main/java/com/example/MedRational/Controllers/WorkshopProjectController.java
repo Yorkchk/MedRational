@@ -64,7 +64,7 @@ public class WorkshopProjectController {
 
     // Admin: Create workshop
     @PostMapping
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<WorkshopProjectResponseDTO> createProject(
             @RequestParam Long authorId,
             @Valid @RequestBody CreateWorkshopProjectDTO request) {
@@ -74,7 +74,7 @@ public class WorkshopProjectController {
 
     // Admin: Edit a workshop's details and dates. Changing the dates recomputes the status
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<WorkshopProjectResponseDTO> updateProject(
             @PathVariable Long id,
             @Valid @RequestBody CreateWorkshopProjectDTO request) {
@@ -83,7 +83,7 @@ public class WorkshopProjectController {
 
     // Admin: Upload attachment to workshop (stored in R2 under WorkshopAttachments/)
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<WorkshopAttachmentResponseDTO> uploadAttachment(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file) throws IOException {
@@ -117,7 +117,7 @@ public class WorkshopProjectController {
 
     // Admin: Delete attachment
     @DeleteMapping("/attachments/{attachmentId}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> deleteAttachment(@PathVariable Long attachmentId) {
         workshopService.removeAttachment(attachmentId);
         return ResponseEntity.noContent().build();
@@ -125,7 +125,7 @@ public class WorkshopProjectController {
 
     // Admin: Manually force state change
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<WorkshopProjectResponseDTO> changeStatus(
             @PathVariable Long id,
             @RequestParam ProjectStatus status) {
@@ -134,7 +134,7 @@ public class WorkshopProjectController {
 
     // Admin: Delete workshop
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
         workshopService.deleteProject(id);
         return ResponseEntity.noContent().build();
