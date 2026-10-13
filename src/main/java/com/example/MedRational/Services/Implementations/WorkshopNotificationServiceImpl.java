@@ -6,6 +6,7 @@ import com.example.MedRational.Entities.WorkshopProject;
 import com.example.MedRational.Entities.enums.NotifType;
 import com.example.MedRational.Entities.enums.ProjectType;
 import com.example.MedRational.Repositories.NotificationRepository;
+import com.example.MedRational.Services.Interfaces.PushMessage;
 import com.example.MedRational.Services.Interfaces.PushNotificationService;
 import com.example.MedRational.Services.Interfaces.WorkshopNotificationService;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -39,7 +41,7 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
                 ? "Spots are limited! Registration for '" + project.getTitle() + "' opens in 10 minutes."
                 : "Applications for '" + project.getTitle() + "' open in 10 minutes. Prepare your submission.";
 
-        broadcast(title, body, project.getId(), NotifType.WORKSHOP_REMINDER);
+        broadcast(project, title, body, "opening_soon", NotifType.WORKSHOP_REMINDER);
         sendAuthorEmail(project, title, body);
     }
 
@@ -56,7 +58,7 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
                 ? "First-come, first-served registration is officially OPEN for '" + project.getTitle() + "'! Secure your spot."
                 : "Submissions for '" + project.getTitle() + "' are now open. Complete your motivation submission before the deadline.";
 
-        broadcast(title, body, project.getId(), NotifType.WORKSHOP_LAUNCH);
+        broadcast(project, title, body, "opened", NotifType.WORKSHOP_LAUNCH);
         sendAuthorEmail(project, title, body);
     }
 
@@ -73,7 +75,7 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
                 ? "Registration for '" + project.getTitle() + "' is wrapping up and closes in 10 minutes."
                 : "The application deadline for '" + project.getTitle() + "' is in 10 minutes. Submit your motivation form now.";
 
-        broadcast(title, body, project.getId(), NotifType.WORKSHOP_REMINDER);
+        broadcast(project, title, body, "closing_soon", NotifType.WORKSHOP_REMINDER);
         sendAuthorEmail(project, title, body);
     }
 
@@ -90,18 +92,26 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
                 ? "Registration for '" + project.getTitle() + "' has ended."
                 : "Application period for '" + project.getTitle() + "' is now closed. Submissions are under review.";
 
-        broadcast(title, body, project.getId(), NotifType.WORKSHOP_CLOSED);
+        broadcast(project, title, body, "closed", NotifType.WORKSHOP_CLOSED);
         sendAuthorEmail(project, title, body);
     }
 
     // Stored for everyone and pushed to every signed-in phone (the app subscribes to the topic)
-    private void broadcast(String title, String body, Long projectId, NotifType type) {
-        saveBroadcastNotification(title, body, projectId, type);
+    private void broadcast(WorkshopProject project, String title, String body, String event, NotifType type) {
+        saveBroadcastNotification(title, body, project.getId(), type);
         pushNotificationService.sendToTopic(
                 PushNotificationService.WORKSHOPS_TOPIC,
-                title,
-                body,
-                Map.of("projectId", String.valueOf(projectId), "type", type.name()));
+                new PushMessage(title, body, pushLocalizationKey(event, project.getProjectType()), List.of(project.getTitle())),
+                Map.of("projectId", String.valueOf(project.getId()), "type", type.name()));
+    }
+
+    /**
+     * "push_opened_fcfs", ... The app has a "_title" and a "_body" string for each, in French and
+     * English, so these keys must match its res/values/push_strings.xml.
+     */
+    private static String pushLocalizationKey(String event, ProjectType projectType) {
+        String type = projectType == ProjectType.FIRST_COME_FIRST_SERVED ? "fcfs" : "motivation";
+        return "push_" + event + "_" + type;
     }
 
     private void saveBroadcastNotification(String title, String body, Long projectId, NotifType type) {
