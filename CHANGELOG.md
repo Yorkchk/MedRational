@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Profile endpoints for the signed-in user under `/api/v1/users/me`:
+  - `GET` and `PUT` (first name, last name, phone) with no code needed.
+  - Change the password with a code emailed to the current address (`POST /password/code`, then `PUT /password`).
+  - Change the email with a code emailed to the new address (`POST /email/code`, then `PUT /email`, which returns a new JWT).
+  - Wrong or expired codes answer 400.
+- Users have separate `firstName`/`lastName` columns. Registration accepts them (optional), and accounts that only have a `fullName` are split at the first space.
+- Code emails say what the code is for (password change, new email).
 - File list responses (reasoning files, search, novelties, recent downloads) include each file's `avgRating` and `totalRatings`.
 - `docs/CI_AND_TESTS.md` and `docs/GITHUB_REPO_SETUP.md` guides, linked from the README.
 - GitHub Actions CI running the test suite against a PostgreSQL service container, Dependabot, and a PR template.
