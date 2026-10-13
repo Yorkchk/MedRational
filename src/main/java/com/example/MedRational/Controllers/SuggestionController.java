@@ -55,7 +55,7 @@ public class SuggestionController {
 
     // Admin inbox (PENDING) or archive (CLOSED)
     @GetMapping
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Page<SuggestionSummaryDTO>> getInbox(
             @RequestParam(defaultValue = "PENDING") SuggestionStatus status,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -64,7 +64,7 @@ public class SuggestionController {
 
     // Admin badge counters: PENDING, CLOSED and UNREAD
     @GetMapping("/counts")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Map<String, Long>> getStatusCounts() {
         return ResponseEntity.ok(suggestionService.getSuggestionStatusCounts());
     }
@@ -87,7 +87,7 @@ public class SuggestionController {
 
     // Admin closes (archives) a suggestion for good
     @PostMapping("/{id}/close")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<SuggestionDetailDTO> closeSuggestion(@PathVariable Long id) {
         return ResponseEntity.ok(suggestionService.closeSuggestion(currentUserGuard.requireCurrentUser(), id));
     }
@@ -104,7 +104,7 @@ public class SuggestionController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> deleteSuggestion(@PathVariable Long id) {
         suggestionService.deleteSuggestion(id);
         return ResponseEntity.noContent().build();

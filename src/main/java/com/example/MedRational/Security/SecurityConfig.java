@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -13,6 +14,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -51,10 +53,14 @@ public class SecurityConfig {
 
                         // Any signed-in user may rate files; must come before the admin-only /files/** rules
                         .requestMatchers(HttpMethod.POST, "/api/v1/files/*/ratings").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/files/*/views").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/files/*/ratings").authenticated()
 
                         .requestMatchers(HttpMethod.POST, "/api/v1/files/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/files/**").hasAuthority("ROLE_ADMIN")
+
+                        // Statistics and other admin tools
+                        .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")
 
                         .anyRequest().authenticated()
                 )
