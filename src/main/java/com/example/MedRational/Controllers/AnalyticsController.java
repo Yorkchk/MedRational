@@ -11,7 +11,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/admin/analytics")
-@PreAuthorize("hasRole('ROLE_ADMIN')")
+@PreAuthorize("hasAuthority('ROLE_ADMIN')")
 @RequiredArgsConstructor
 public class AnalyticsController {
 
@@ -20,6 +20,12 @@ public class AnalyticsController {
     @GetMapping("/overview")
     public ResponseEntity<AdminDashboardMetricsDTO> getOverview() {
         return ResponseEntity.ok(analyticsService.getAdminDashboardOverview());
+    }
+
+    // Admin statistics screen of the app: users, usage, content demand, trends and engagement
+    @GetMapping("/dashboard")
+    public ResponseEntity<AdminStatisticsDTO> getStatistics() {
+        return ResponseEntity.ok(analyticsService.getStatistics());
     }
 
     @GetMapping("/top-downloads")

@@ -19,6 +19,8 @@ public interface WorkshopProjectRepository extends JpaRepository<WorkshopProject
     @EntityGraph(attributePaths = {"attachments", "author"})
     Page<WorkshopProject> findByStatusOrderByRegistrationOpensAtAsc(ProjectStatus status, Pageable pageable);
 
+    long countByStatus(ProjectStatus status);
+
     // 1. Exactly ~10 minutes before launch
     @Query("""
         SELECT p FROM WorkshopProject p 

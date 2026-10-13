@@ -1,6 +1,7 @@
 package com.example.MedRational.Security;
 
 import com.example.MedRational.Repositories.UserRepository;
+import com.example.MedRational.Services.Interfaces.ActivityTrackingService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +23,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository; // 1. Inject UserRepository
+    private final ActivityTrackingService activityTrackingService;
 
 
     @Override
@@ -48,6 +50,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 );
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+                // Marks the user active today for the admin statistics
+                activityTrackingService.recordActivity(user.getId());
             });
         }
 

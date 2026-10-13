@@ -11,6 +11,9 @@ public interface AnalyticsService {
     // Aggregated dashboard view for the admin home screen
     AdminDashboardMetricsDTO getAdminDashboardOverview();
 
+    // Everything the app's admin statistics screen shows
+    AdminStatisticsDTO getStatistics();
+
     // Ranked list of most downloaded files
     List<FileMetricItemDTO> getTopDownloadedFiles(int limit);
 
