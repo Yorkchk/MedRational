@@ -73,7 +73,10 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
                 .attachments(new ArrayList<>())
                 .build();
 
-        return mapToDTO(workshopProjectRepository.save(project), true);
+        // Students hear about it while it's upcoming, not only once registration opens
+        WorkshopProject saved = workshopProjectRepository.save(project);
+        workshopNotificationService.notifyProjectCreated(saved);
+        return mapToDTO(saved, true);
     }
 
     @Override
