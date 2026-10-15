@@ -6,12 +6,14 @@ import com.example.MedRational.DTOs.SuggestionMessageDTO;
 import com.example.MedRational.DTOs.SuggestionSummaryDTO;
 import com.example.MedRational.Entities.enums.SuggestionStatus;
 import com.example.MedRational.Security.CurrentUserGuard;
+import com.example.MedRational.Services.Interfaces.FilePreviewService;
 import com.example.MedRational.Services.Interfaces.SuggestionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
 
 // Suggestions are private conversations between the user who sent one and the admins.
@@ -33,6 +36,7 @@ public class SuggestionController {
 
     private final SuggestionService suggestionService;
     private final CurrentUserGuard currentUserGuard;
+    private final FilePreviewService filePreviewService;
 
     // User sends a suggestion: title, description and an optional file (max 10 MB)
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -95,6 +99,20 @@ public class SuggestionController {
     @GetMapping("/{id}/attachment")
     public ResponseEntity<Resource> downloadSuggestionAttachment(@PathVariable Long id) {
         return fileResponse(suggestionService.openSuggestionAttachment(currentUserGuard.requireCurrentUser(), id));
+    }
+
+    // Admin: inline rendition of the attachment (PDF and images as-is; DOCX/PPTX/XLSX converted to PDF).
+    // 415 when the format can't be previewed, 404 when there's no attachment
+    @GetMapping("/{id}/attachment/preview")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<Resource> previewSuggestionAttachment(@PathVariable Long id) {
+        DownloadableFile preview = filePreviewService.getSuggestionAttachmentPreview(id);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(preview.getContentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline()
+                        .filename(preview.getFileName(), StandardCharsets.UTF_8).build().toString())
+                .cacheControl(CacheControl.maxAge(Duration.ofHours(1)).cachePrivate())
+                .body(preview.getResource());
     }
 
     @GetMapping("/{id}/messages/{messageId}/attachment")
