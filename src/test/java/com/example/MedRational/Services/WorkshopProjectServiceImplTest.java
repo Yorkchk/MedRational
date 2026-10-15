@@ -101,6 +101,7 @@ class WorkshopProjectServiceImplTest {
         assertEquals(25, created.getCapacity());
         assertEquals("Suturing", created.getTitle());
         assertEquals(ProjectStatus.UPCOMING, created.getStatus());
+        verify(notificationService).notifyProjectCreated(saved.getValue());
     }
 
     private CreateWorkshopProjectDTO edit(LocalDateTime opensAt, LocalDateTime closesAt) {
@@ -423,6 +424,7 @@ class WorkshopProjectServiceImplTest {
                 () -> service.createProject(request, AUTHOR_ID));
         assertEquals("Registration opening time must be in the future.", error.getMessage());
         verify(projectRepository, never()).save(any());
+        verify(notificationService, never()).notifyProjectCreated(any());
     }
 
     @Test

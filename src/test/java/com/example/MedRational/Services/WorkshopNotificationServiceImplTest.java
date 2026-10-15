@@ -31,6 +31,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class WorkshopNotificationServiceImplTest {
@@ -72,6 +73,21 @@ class WorkshopNotificationServiceImplTest {
         verify(notificationRepository).save(stored.capture());
         assertEquals(title, stored.getValue().getTitle());
         return message.getValue();
+    }
+
+    @Test
+    void newProjectIsPushedToEveryone() {
+        PushMessage message = assertPushed(service::notifyProjectCreated, NotifType.WORKSHOP_CREATED, "New Project");
+        assertEquals("push_created_fcfs", message.localizationKey());
+        verifyNoInteractions(mailSender);
+    }
+
+    @Test
+    void newMotivationProjectUsesItsOwnKey() {
+        project.setProjectType(ProjectType.MOTIVATION);
+
+        PushMessage message = assertPushed(service::notifyProjectCreated, NotifType.WORKSHOP_CREATED, "New Project");
+        assertEquals("push_created_motivation", message.localizationKey());
     }
 
     @Test
