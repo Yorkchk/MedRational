@@ -7,4 +7,6 @@ public interface FilePreviewService {
     DownloadableFile getPreview(Long fileId);
 
     DownloadableFile getAttachmentPreview(Long attachmentId);
+
+    DownloadableFile getSuggestionAttachmentPreview(Long suggestionId);
 }
