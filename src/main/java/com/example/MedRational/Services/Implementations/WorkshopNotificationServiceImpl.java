@@ -28,6 +28,21 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
     private final JavaMailSender mailSender;
     private final PushNotificationService pushNotificationService;
 
+    // Announces a new project while it's still upcoming. The author just created it, so no email
+    @Override
+    @Transactional
+    public void notifyProjectCreated(WorkshopProject project) {
+        boolean isFcfs = project.getProjectType() == ProjectType.FIRST_COME_FIRST_SERVED;
+
+        String title = "New Project: " + project.getTitle();
+
+        String body = isFcfs
+                ? "'" + project.getTitle() + "' is coming up. Registration opens soon, check the dates in the app."
+                : "Applications for '" + project.getTitle() + "' open soon. Check the dates and prepare your motivation letter.";
+
+        broadcast(project, title, body, "created", NotifType.WORKSHOP_CREATED);
+    }
+
     @Override
     @Transactional
     public void notifyOpeningSoon(WorkshopProject project) {
