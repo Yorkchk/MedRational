@@ -13,6 +13,7 @@ import com.example.MedRational.Entities.SuggestionMessage;
 import com.example.MedRational.Entities.User;
 import com.example.MedRational.Entities.enums.SuggestionStatus;
 import com.example.MedRational.Exceptions.SuggestionClosedException;
+import com.example.MedRational.Preview.PreviewKind;
 import com.example.MedRational.Repositories.SuggestionRepository;
 import com.example.MedRational.Services.Interfaces.SuggestionService;
 import jakarta.persistence.EntityNotFoundException;
@@ -313,6 +314,7 @@ public class SuggestionServiceImpl implements SuggestionService {
                 .fileName(a.getFileName())
                 .contentType(a.getContentType())
                 .sizeBytes(a.getSizeBytes())
+                .previewable(PreviewKind.detect(a.getFileName(), a.getContentType()) != PreviewKind.NONE)
                 .build();
     }
 

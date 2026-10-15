@@ -2,11 +2,13 @@ package com.example.MedRational.Services.Implementations;
 
 import com.example.MedRational.DTOs.DownloadableFile;
 import com.example.MedRational.Entities.StudyFile;
+import com.example.MedRational.Entities.SuggestionAttachment;
 import com.example.MedRational.Entities.WorkshopAttachment;
 import com.example.MedRational.Exceptions.UnsupportedMediaTypeException;
 import com.example.MedRational.Preview.OfficeConverter;
 import com.example.MedRational.Preview.PreviewKind;
 import com.example.MedRational.Repositories.StudyFileRepository;
+import com.example.MedRational.Repositories.SuggestionRepository;
 import com.example.MedRational.Repositories.WorkshopAttachmentRepository;
 import com.example.MedRational.Services.Interfaces.FilePreviewService;
 import jakarta.persistence.EntityNotFoundException;
@@ -27,6 +29,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
 
     private final StudyFileRepository studyFileRepository;
     private final WorkshopAttachmentRepository workshopAttachmentRepository;
+    private final SuggestionRepository suggestionRepository;
     private final R2StorageServiceImpl r2StorageService;
     private final OfficeConverter officeConverter;
 
@@ -56,9 +59,22 @@ public class FilePreviewServiceImpl implements FilePreviewService {
                 notFound);
     }
 
+    // Not @Transactional, for the same reason as getPreview. Suggestion attachments have no column for a
+    // converted PDF, so Office files are converted on each call; the app caches the result
+    public DownloadableFile getSuggestionAttachmentPreview(Long suggestionId) {
+        String notFound = "No attachment for suggestion with ID: " + suggestionId;
+        SuggestionAttachment attachment = suggestionRepository.findById(suggestionId)
+                .map(suggestion -> suggestion.getAttachment())
+                .filter(a -> a.getStorageKey() != null)
+                .orElseThrow(() -> new EntityNotFoundException(notFound));
+
+        return render(attachment.getFileName(), attachment.getContentType(), attachment.getStorageKey(), null,
+                null, notFound);
+    }
+
     /**
      * The inline rendition of a stored file. [savePreviewKey] records a freshly converted PDF and returns
-     * false when the file was deleted meanwhile.
+     * false when the file was deleted meanwhile; when null, the converted PDF isn't kept in R2.
      */
     private DownloadableFile render(String fileName, String fileType, String storageKey, String cachedPreviewKey,
                                     Predicate<String> savePreviewKey, String notFoundMessage) {
@@ -88,6 +104,9 @@ public class FilePreviewServiceImpl implements FilePreviewService {
         }
 
         byte[] pdf = officeConverter.convertToPdf(downloadBytes(storageKey), kind.getSourceFormat());
+        if (savePreviewKey == null) {
+            return new DownloadableFile(previewName, PDF_CONTENT_TYPE, new ByteArrayResource(pdf));
+        }
 
         // Format: Previews/{original storage key}.pdf
         String previewKey = "Previews/" + storageKey + ".pdf";

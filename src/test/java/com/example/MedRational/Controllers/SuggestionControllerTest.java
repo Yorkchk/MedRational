@@ -1,16 +1,23 @@
 package com.example.MedRational.Controllers;
 
+import com.example.MedRational.DTOs.DownloadableFile;
 import com.example.MedRational.DTOs.SuggestionDetailDTO;
 import com.example.MedRational.Entities.Role;
 import com.example.MedRational.Entities.User;
 import com.example.MedRational.Security.CurrentUserGuard;
+import com.example.MedRational.Services.Interfaces.FilePreviewService;
 import com.example.MedRational.Services.Interfaces.SuggestionService;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -21,7 +28,8 @@ class SuggestionControllerTest {
 
     private final SuggestionService service = mock(SuggestionService.class);
     private final CurrentUserGuard guard = mock(CurrentUserGuard.class);
-    private final SuggestionController controller = new SuggestionController(service, guard);
+    private final FilePreviewService previewService = mock(FilePreviewService.class);
+    private final SuggestionController controller = new SuggestionController(service, guard, previewService);
 
     @Test
     void suggestionIsCreatedForTheSignedInUser() {
@@ -42,5 +50,28 @@ class SuggestionControllerTest {
 
         assertThrows(AccessDeniedException.class, () -> controller.getSuggestion(10L));
         verify(service, never()).getSuggestion(any(), any());
+    }
+
+    @Test
+    void attachmentPreviewIsServedInline() {
+        Resource pdf = new ByteArrayResource(new byte[]{1});
+        when(previewService.getSuggestionAttachmentPreview(10L))
+                .thenReturn(new DownloadableFile("plan.pdf", "application/pdf", pdf));
+
+        ResponseEntity<Resource> response = controller.previewSuggestionAttachment(10L);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals("application/pdf", response.getHeaders().getContentType().toString());
+        assertTrue(response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION).startsWith("inline"));
+        assertEquals(pdf, response.getBody());
+    }
+
+    @Test
+    void attachmentPreviewIsAdminOnly() throws NoSuchMethodException {
+        PreAuthorize rule = SuggestionController.class
+                .getMethod("previewSuggestionAttachment", Long.class)
+                .getAnnotation(PreAuthorize.class);
+
+        assertEquals("hasAuthority('ROLE_ADMIN')", rule.value());
     }
 }

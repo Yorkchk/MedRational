@@ -210,6 +210,17 @@ class SuggestionServiceImplTest {
     }
 
     @Test
+    void previewableAttachmentsAreFlagged() {
+        Suggestion s = openSuggestion();
+        s.setAttachment(storedPdf);
+        assertTrue(service.getSuggestion(admin, 10L).getAttachment().isPreviewable());
+
+        s.setAttachment(SuggestionAttachment.builder()
+                .storageKey("Suggestions/10/abc-notes.txt").fileName("notes.txt").contentType("text/plain").build());
+        assertFalse(service.getSuggestion(admin, 10L).getAttachment().isPreviewable());
+    }
+
+    @Test
     void anotherUserCannotOpenIt() {
         openSuggestion();
 

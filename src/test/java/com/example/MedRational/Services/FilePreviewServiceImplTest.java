@@ -2,10 +2,13 @@ package com.example.MedRational.Services;
 
 import com.example.MedRational.DTOs.DownloadableFile;
 import com.example.MedRational.Entities.StudyFile;
+import com.example.MedRational.Entities.Suggestion;
+import com.example.MedRational.Entities.SuggestionAttachment;
 import com.example.MedRational.Entities.WorkshopAttachment;
 import com.example.MedRational.Exceptions.UnsupportedMediaTypeException;
 import com.example.MedRational.Preview.OfficeConverter;
 import com.example.MedRational.Repositories.StudyFileRepository;
+import com.example.MedRational.Repositories.SuggestionRepository;
 import com.example.MedRational.Repositories.WorkshopAttachmentRepository;
 import com.example.MedRational.Services.Implementations.FilePreviewServiceImpl;
 import com.example.MedRational.Services.Implementations.R2StorageServiceImpl;
@@ -35,11 +38,13 @@ class FilePreviewServiceImplTest {
 
     private final StudyFileRepository studyFileRepository = mock(StudyFileRepository.class);
     private final WorkshopAttachmentRepository attachmentRepository = mock(WorkshopAttachmentRepository.class);
+    private final SuggestionRepository suggestionRepository = mock(SuggestionRepository.class);
     private final R2StorageServiceImpl r2StorageService = mock(R2StorageServiceImpl.class);
     private final OfficeConverter officeConverter = mock(OfficeConverter.class);
 
     private final FilePreviewServiceImpl service =
-            new FilePreviewServiceImpl(studyFileRepository, attachmentRepository, r2StorageService, officeConverter);
+            new FilePreviewServiceImpl(studyFileRepository, attachmentRepository, suggestionRepository, r2StorageService,
+                    officeConverter);
 
     private void givenFile(String fileName, String fileType) {
         StudyFile file = StudyFile.builder().id(FILE_ID).fileName(fileName).fileType(fileType)
@@ -157,5 +162,76 @@ class FilePreviewServiceImplTest {
         when(attachmentRepository.findById(ATTACHMENT_ID)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> service.getAttachmentPreview(ATTACHMENT_ID));
+    }
+
+    // --- suggestion attachments -------------------------------------------------------------------
+
+    private static final long SUGGESTION_ID = 12L;
+    private static final String SUGGESTION_KEY = "Suggestions/12/ef56-";
+
+    private void givenSuggestionAttachment(String fileName, String contentType) {
+        SuggestionAttachment attachment = SuggestionAttachment.builder()
+                .storageKey(SUGGESTION_KEY + fileName).fileName(fileName).contentType(contentType).sizeBytes(3L)
+                .build();
+        Suggestion suggestion = Suggestion.builder().id(SUGGESTION_ID).attachment(attachment).build();
+        when(suggestionRepository.findById(SUGGESTION_ID)).thenReturn(Optional.of(suggestion));
+    }
+
+    @Test
+    void suggestionPdfIsStreamedAsIs() {
+        givenSuggestionAttachment("idea.pdf", "application/pdf");
+        Resource original = new ByteArrayResource(new byte[]{1});
+        when(r2StorageService.downloadFileAsResource(SUGGESTION_KEY + "idea.pdf")).thenReturn(original);
+
+        DownloadableFile preview = service.getSuggestionAttachmentPreview(SUGGESTION_ID);
+
+        assertEquals("application/pdf", preview.getContentType());
+        assertSame(original, preview.getResource());
+        verifyNoInteractions(officeConverter);
+    }
+
+    @Test
+    void suggestionImageIsStreamedWithItsContentType() {
+        givenSuggestionAttachment("screen.png", "image/png");
+        when(r2StorageService.downloadFileAsResource(any())).thenReturn(new ByteArrayResource(new byte[]{1}));
+
+        assertEquals("image/png", service.getSuggestionAttachmentPreview(SUGGESTION_ID).getContentType());
+    }
+
+    @Test
+    void suggestionOfficeFileIsConvertedWithoutKeepingThePdfInStorage() throws Exception {
+        givenSuggestionAttachment("plan.docx", null);
+        byte[] pdf = {4, 5, 6};
+        when(r2StorageService.downloadFileBytes(SUGGESTION_KEY + "plan.docx")).thenReturn(new byte[]{1});
+        when(officeConverter.convertToPdf(any(), any())).thenReturn(pdf);
+
+        DownloadableFile preview = service.getSuggestionAttachmentPreview(SUGGESTION_ID);
+
+        assertEquals("plan.pdf", preview.getFileName());
+        assertEquals("application/pdf", preview.getContentType());
+        assertArrayEquals(pdf, preview.getResource().getContentAsByteArray());
+        verify(r2StorageService, never()).uploadBytes(any(), any(), any());
+    }
+
+    @Test
+    void suggestionAttachmentThatCantBePreviewedIsRejected() {
+        givenSuggestionAttachment("notes.txt", "text/plain");
+
+        assertThrows(UnsupportedMediaTypeException.class, () -> service.getSuggestionAttachmentPreview(SUGGESTION_ID));
+    }
+
+    @Test
+    void suggestionWithoutAttachmentIsNotFound() {
+        Suggestion suggestion = Suggestion.builder().id(SUGGESTION_ID).build();
+        when(suggestionRepository.findById(SUGGESTION_ID)).thenReturn(Optional.of(suggestion));
+
+        assertThrows(EntityNotFoundException.class, () -> service.getSuggestionAttachmentPreview(SUGGESTION_ID));
+    }
+
+    @Test
+    void missingSuggestionIsNotFound() {
+        when(suggestionRepository.findById(SUGGESTION_ID)).thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class, () -> service.getSuggestionAttachmentPreview(SUGGESTION_ID));
     }
 }
