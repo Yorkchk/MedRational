@@ -42,4 +42,9 @@ public interface FileRatingRepository extends JpaRepository<FileRating, Long> {
     @Modifying
     @Query("DELETE FROM FileRating r WHERE r.file.id IN (SELECT f.id FROM StudyFile f WHERE f.reasoning.category.id = :categoryId)")
     void deleteAllByCategoryId(@Param("categoryId") Long categoryId);
+
+    // Account deletion: the score stays in the file's average, but no longer points to anyone
+    @Modifying
+    @Query("UPDATE FileRating r SET r.user = null WHERE r.user.id = :userId")
+    void anonymizeByUserId(@Param("userId") Long userId);
 }

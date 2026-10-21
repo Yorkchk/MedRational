@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -58,4 +59,9 @@ public interface WorkshopProjectRepository extends JpaRepository<WorkshopProject
           AND p.registrationClosesAt <= :now
     """)
     List<WorkshopProject> findProjectsReadyToClose(@Param("now") LocalDateTime now);
+
+    // Account deletion: the admin's projects stay, with no author
+    @Modifying
+    @Query("UPDATE WorkshopProject p SET p.author = null WHERE p.author.id = :userId")
+    void anonymizeByAuthorId(@Param("userId") Long userId);
 }

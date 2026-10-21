@@ -7,6 +7,7 @@ import com.example.MedRational.Repositories.StatisticsRows.NameCount;
 import com.example.MedRational.Repositories.StatisticsRows.PeriodCount;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -91,4 +92,8 @@ public interface FileDownloadEventRepository extends JpaRepository<FileDownloadE
                                      @Param("since") LocalDateTime since,
                                      @Param("bucketDays") int bucketDays);
 
+    // Account deletion: the download still counts, but no longer points to anyone
+    @Modifying
+    @Query("UPDATE FileDownloadEvent e SET e.user = null WHERE e.user.id = :userId")
+    void anonymizeByUserId(@Param("userId") Long userId);
 }

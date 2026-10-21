@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>SWISRA – Supprimer mon compte</title>
+<!-- Account deletion link given to Google Play. Self-contained on purpose: no external script, font or style.
+     Calls POST /api/v1/auth/delete-account/code and /confirm. -->
+<style>
+  :root {
+    --bg: #F7F7F8; --card: #FFFFFF; --text: #1B1B1F; --muted: #5B6168; --line: #E2E4E7;
+    --primary: #C8102E; --on-primary: #FFFFFF; --slate: #25343C;
+    --ok-bg: #E8F5EC; --ok-text: #1E6B3A; --err-bg: #FDECEC; --err-text: #A1121F;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121416; --card: #1D2024; --text: #E6E8EA; --muted: #A4AAB0; --line: #2E3338;
+      --primary: #FF6B6B; --on-primary: #1B1B1F; --slate: #C9D6DD;
+      --ok-bg: #16301F; --ok-text: #8FD6A6; --err-bg: #3A1618; --err-text: #FFB3B3;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  header svg { width: 44px; height: 44px; flex: none; }
+  header .brand { font-weight: 700; color: var(--slate); letter-spacing: .04em; }
+  header .lang { margin-left: auto; display: flex; gap: 4px; }
+  .lang button {
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    border-radius: 999px; padding: 4px 12px; cursor: pointer; font: inherit; font-size: 14px;
+  }
+  .lang button[aria-pressed="true"] { border-color: var(--slate); font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+  h1 { font-size: 24px; line-height: 1.25; margin: 0 0 8px; color: var(--slate); }
+  h2 { font-size: 16px; margin: 0 0 8px; }
+  p { margin: 0 0 12px; }
+  ul { margin: 0 0 12px; padding-left: 20px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  label { display: block; font-weight: 600; margin-bottom: 6px; }
+  input {
+    width: 100%; padding: 12px; font: inherit; color: var(--text); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 10px; margin-bottom: 12px;
+  }
+  input#code { letter-spacing: .4em; font-size: 20px; text-align: center; }
+  button.primary, button.link { font: inherit; cursor: pointer; }
+  button.primary {
+    width: 100%; padding: 12px; border: 0; border-radius: 999px;
+    background: var(--primary); color: var(--on-primary); font-weight: 600;
+  }
+  button.primary:disabled { opacity: .6; cursor: progress; }
+  button.link { background: none; border: 0; color: var(--slate); text-decoration: underline; padding: 8px 0; }
+  .msg { border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: 14px; }
+  .msg.ok { background: var(--ok-bg); color: var(--ok-text); }
+  .msg.err { background: var(--err-bg); color: var(--err-text); }
+  .confirm { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 12px; font-weight: 400; }
+  .confirm input { width: auto; margin: 4px 0 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <defs><clipPath id="sphere"><path d="M10,50 A40,40 0 1,1 90,50 A40,40 0 1,1 10,50 Z"/></clipPath></defs>
+      <path d="M10,50 A40,40 0 1,1 90,50 A40,40 0 1,1 10,50 Z" fill="#E3212B"/>
+      <g clip-path="url(#sphere)" fill="#1B1B1F">
+        <path d="M-2,14 Q50,9 102,14 L102,17.8 Q50,12.8 -2,17.8 Z"/>
+        <path d="M-2,23.5 Q50,17.5 102,23.5 L102,27.7 Q50,21.7 -2,27.7 Z"/>
+        <path d="M-2,33 Q50,28 102,33 L102,37.2 Q50,32.2 -2,37.2 Z"/>
+        <path d="M-2,63.5 Q50,68.5 102,63.5 L102,67.7 Q50,72.7 -2,67.7 Z"/>
+        <path d="M-2,73.5 Q50,79.5 102,73.5 L102,77.7 Q50,83.7 -2,77.7 Z"/>
+        <path d="M-2,83 Q50,88 102,83 L102,86.8 Q50,91.8 -2,86.8 Z"/>
+      </g>
+      <path d="M4,57 L15,57 L19,48 L24,66 L31,21 L50,60 L69,21 L76,75 L82,57 L96,57" fill="none" stroke="#FFFFFF" stroke-width="11" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M4,57 L15,57 L19,48 L24,66 L31,21 L50,60 L69,21 L76,75 L82,57 L96,57" fill="none" stroke="#25343C" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>
+    <span class="brand">SWISRA</span>
+    <div class="lang" role="group" aria-label="Langue / Language">
+      <button type="button" data-lang="fr" aria-pressed="true">FR</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <div class="card">
+    <h1 data-t="title"></h1>
+    <p data-t="intro"></p>
+    <h2 data-t="deletedTitle"></h2>
+    <ul>
+      <li data-t="deleted1"></li>
+      <li data-t="deleted2"></li>
+      <li data-t="deleted3"></li>
+    </ul>
+    <h2 data-t="keptTitle"></h2>
+    <p class="muted" data-t="kept"></p>
+  </div>
+
+  <form class="card" id="step-email" novalidate>
+    <label for="email" data-t="emailLabel"></label>
+    <input id="email" type="email" autocomplete="email" required>
+    <div class="msg err" id="email-error" role="alert" hidden></div>
+    <button class="primary" type="submit" data-t="sendCode"></button>
+  </form>
+
+  <form class="card" id="step-code" novalidate hidden>
+    <div class="msg ok" id="code-sent" role="status"></div>
+    <label for="code" data-t="codeLabel"></label>
+    <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
+    <label class="confirm"><input id="sure" type="checkbox"> <span data-t="sure"></span></label>
+    <div class="msg err" id="code-error" role="alert" hidden></div>
+    <button class="primary" type="submit" data-t="delete"></button>
+    <button class="link" type="button" id="other-email" data-t="otherEmail"></button>
+  </form>
+
+  <div class="card" id="done" hidden>
+    <h1 data-t="doneTitle"></h1>
+    <p data-t="doneText"></p>
+  </div>
+</main>
+
+<script>
+(function () {
+  var TEXT = {
+    fr: {
+      title: "Supprimer mon compte SWISRA",
+      intro: "Saisissez l'adresse e-mail de votre compte. Nous vous enverrons un code pour confirmer que c'est bien vous. Vous pouvez aussi supprimer votre compte depuis l'application : Profil → Supprimer mon compte.",
+      deletedTitle: "Ce qui est supprimé définitivement",
+      deleted1: "Votre compte : nom, prénom, e-mail, téléphone et mot de passe.",
+      deleted2: "Vos favoris et vos téléchargements récents.",
+      deleted3: "Vos suggestions, leurs pièces jointes et vos notifications.",
+      keptTitle: "Ce qui est conservé de façon anonyme",
+      kept: "Les nombres de téléchargements et de consultations des fichiers, ainsi que vos notes (pour que les moyennes ne changent pas), sans aucun lien avec vous. Les projets et réponses publiés par un administrateur restent visibles, sans auteur.",
+      emailLabel: "Adresse e-mail",
+      sendCode: "Recevoir un code",
+      codeSent: "Si un compte utilise {email}, un code à 6 chiffres vient d'y être envoyé. Il est valable 5 minutes.",
+      codeLabel: "Code de vérification",
+      sure: "Je comprends que la suppression est définitive.",
+      delete: "Supprimer définitivement mon compte",
+      otherEmail: "Utiliser une autre adresse",
+      doneTitle: "Compte supprimé",
+      doneText: "Votre compte et vos données personnelles ont été supprimés. Vous pouvez désinstaller l'application.",
+      errEmail: "Saisissez une adresse e-mail valide.",
+      errCode: "Saisissez le code à 6 chiffres reçu par e-mail.",
+      errSure: "Cochez la case pour confirmer.",
+      errInvalid: "Code invalide ou expiré. Demandez un nouveau code.",
+      errServer: "Une erreur est survenue (HTTP {status}). Réessayez plus tard.",
+      errNetwork: "Impossible de joindre le serveur. Vérifiez votre connexion."
+    },
+    en: {
+      title: "Delete my SWISRA account",
+      intro: "Enter your account's email address. We'll send you a code to confirm it's you. You can also delete your account in the app: Profile → Delete my account.",
+      deletedTitle: "What is permanently deleted",
+      deleted1: "Your account: first name, last name, email, phone number and password.",
+      deleted2: "Your favorites and recent downloads.",
+      deleted3: "Your suggestions, their attachments and your notifications.",
+      keptTitle: "What is kept anonymously",
+      kept: "File download and view counts, and your ratings (so averages don't change), with no link to you. Projects and replies posted by an admin stay visible, with no author.",
+      emailLabel: "Email address",
+      sendCode: "Send me a code",
+      codeSent: "If an account uses {email}, a 6-digit code has just been sent to it. It is valid for 5 minutes.",
+      codeLabel: "Verification code",
+      sure: "I understand that deletion is permanent.",
+      delete: "Permanently delete my account",
+      otherEmail: "Use a different email",
+      doneTitle: "Account deleted",
+      doneText: "Your account and personal data have been deleted. You can uninstall the app.",
+      errEmail: "Enter a valid email address.",
+      errCode: "Enter the 6-digit code you received by email.",
+      errSure: "Tick the box to confirm.",
+      errInvalid: "Invalid or expired code. Request a new code.",
+      errServer: "Something went wrong (HTTP {status}). Please try again later.",
+      errNetwork: "Can't reach the server. Check your connection."
+    }
+  };
+
+  var lang = "fr";
+  var email = "";
+  var $ = function (id) { return document.getElementById(id); };
+  var t = function (key, args) {
+    var s = TEXT[lang][key];
+    Object.keys(args || {}).forEach(function (k) { s = s.replace("{" + k + "}", args[k]); });
+    return s;
+  };
+
+  // Messages shown so far, kept as keys so switching language translates them too
+  var shown = {};
+  function show(id, key, args) {
+    shown[id] = key ? { key: key, args: args } : null;
+    $(id).hidden = !key;
+    $(id).textContent = key ? t(key, args) : "";
+  }
+
+  function render() {
+    document.documentElement.lang = lang;
+    document.title = "SWISRA – " + t("title");
+    document.querySelectorAll("[data-t]").forEach(function (el) { el.textContent = t(el.dataset.t); });
+    document.querySelectorAll("[data-lang]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
+    });
+    Object.keys(shown).forEach(function (id) {
+      if (shown[id]) $(id).textContent = t(shown[id].key, shown[id].args);
+    });
+  }
+
+  document.querySelectorAll("[data-lang]").forEach(function (b) {
+    b.addEventListener("click", function () { lang = b.dataset.lang; render(); });
+  });
+
+  function post(path, body) {
+    return fetch("api/v1/auth/delete-account/" + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+  }
+
+  function busy(form, on) {
+    form.querySelector("button.primary").disabled = on;
+  }
+
+  // The backend's own messages are English only, so the page picks its text from the status
+  function failure(id, error, response) {
+    if (!response) return show(id, "errNetwork");
+    if (response.status === 400) return show(id, "errInvalid");
+    show(id, "errServer", { status: response.status });
+  }
+
+  $("step-email").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var value = $("email").value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return show("email-error", "errEmail");
+    show("email-error", null);
+    busy(this, true);
+    var form = this;
+    post("code", { email: value })
+      .then(function (r) {
+        if (!r.ok) return failure("email-error", null, r);
+        email = value;
+        show("code-sent", "codeSent", { email: value });
+        $("step-email").hidden = true;
+        $("step-code").hidden = false;
+        $("code").focus();
+      })
+      .catch(function () { failure("email-error"); })
+      .finally(function () { busy(form, false); });
+  });
+
+  $("step-code").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var code = $("code").value.trim();
+    if (!/^[0-9]{6}$/.test(code)) return show("code-error", "errCode");
+    if (!$("sure").checked) return show("code-error", "errSure");
+    show("code-error", null);
+    busy(this, true);
+    var form = this;
+    post("confirm", { email: email, code: code })
+      .then(function (r) {
+        if (!r.ok) return failure("code-error", null, r);
+        $("step-code").hidden = true;
+        $("done").hidden = false;
+        document.querySelectorAll(".card:not(#done)").forEach(function (c) { c.hidden = true; });
+      })
+      .catch(function () { failure("code-error"); })
+      .finally(function () { busy(form, false); });
+  });
+
+  $("other-email").addEventListener("click", function () {
+    show("code-error", null);
+    $("code").value = "";
+    $("sure").checked = false;
+    $("step-code").hidden = true;
+    $("step-email").hidden = false;
+    $("email").focus();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

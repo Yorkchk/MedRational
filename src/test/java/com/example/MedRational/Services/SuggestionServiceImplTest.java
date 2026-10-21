@@ -316,6 +316,22 @@ class SuggestionServiceImplTest {
         assertThrows(AccessDeniedException.class, () -> service.closeSuggestion(owner, 10L));
     }
 
+    // Authors who deleted their account leave their messages with no author
+    @Test
+    void messagesWhoseAuthorDeletedTheirAccountStillShow() {
+        Suggestion s = openSuggestion();
+        s.getMessages().add(SuggestionMessage.builder().id(5L).suggestion(s).author(null).fromAdmin(true)
+                .body("We added it").build());
+        s.getMessages().add(SuggestionMessage.builder().id(6L).suggestion(s).author(null).fromAdmin(false)
+                .body("Thanks").build());
+
+        SuggestionDetailDTO detail = service.getSuggestion(admin, 10L);
+
+        assertEquals("Admin", detail.getMessages().get(0).getAuthorName());
+        assertNull(detail.getMessages().get(1).getAuthorName());
+        assertEquals("Thanks", detail.getMessages().get(1).getBody());
+    }
+
     // --- delete and counts ----------------------------------------------------------------------
 
     @Test

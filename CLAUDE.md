@@ -37,17 +37,23 @@ Layered packages under `com.example.MedRational` (note the capitalized package n
   - Names and phone change directly, and `fullName` is kept as "first last". `Services/Support/UserNames` derives first/last for accounts created before the split.
   - A password change needs a code sent to the current email. An email change stores `User.pendingEmail` and sends the code to the new address. Confirming it returns a new JWT, because the token's subject is the email.
   - `Services/Support/OtpCodes` issues and checks those codes and throws `IllegalArgumentException` (400), never `BadCredentialsException`. The Android app signs out on any 401/403.
+- **Account deletion** (`AccountDeletionServiceImpl`, required by Google Play): a code emailed to the account's address, then the delete. Two entry points:
+  - In the app: `POST /api/v1/users/me/delete/code`, then `DELETE /api/v1/users/me {code}` (204).
+  - Without the app: the public page `/delete-account` (`resources/static/delete-account.html`, the link given to Google Play) calls `POST /api/v1/auth/delete-account/code {email}` and `/confirm {email, code}`. Both answer the same for unknown emails, so the page doesn't reveal who has an account.
+  - Deleted: the user row, favorites, `user_file_downloads`, the user's own notifications (never the broadcasts), and their suggestions with their R2 attachments. `user_daily_activity` goes through its `ON DELETE CASCADE`.
+  - Kept with the user set to null, so counts and averages don't move: `file_download_events`, `file_view_events`, `file_ratings`, and an admin's `workshop_projects` and `suggestion_messages`. Those author/rater columns are nullable (`Config/AccountDeletionSchemaMigration` drops the old NOT NULL), so code reading them must handle null.
+  - A new table that points to `users` must be added to this service, either deleted or anonymised.
 - **Statistics**: `GET /api/v1/admin/analytics/dashboard` (`AnalyticsServiceImpl.getStatistics`) returns everything the app's admin screen shows in one `AdminStatisticsDTO`. "Students" means `ROLE_USER`, and weeks are rolling 7-day windows ending today, from the injected `Clock`.
   - Sources: `file_download_events` (one row per download), `file_view_events` (`POST /api/v1/files/{id}/views`, students only, deduplicated over 30 minutes) and `user_daily_activity` (one row per user and day, written by `ActivityTrackingServiceImpl` from `JwtAuthenticationFilter`, with an in-memory cache so it costs one insert a day).
   - Time series use native Postgres queries that return a bucket index counted back from today (`StatisticsRows.BucketCount`), and `series(...)` fills the empty periods.
-  - The new tables' foreign keys are `ON DELETE CASCADE` (`@OnDelete`), so deleting a file or user needs no cleanup for them.
+  - The new tables' foreign keys are `ON DELETE CASCADE` (`@OnDelete`), so deleting a file needs no cleanup for them. Deleting an account anonymises `file_view_events` first, so the views still count.
 - **Errors**: `Exceptions/GlobalExceptionHandler` maps `EntityNotFoundException` → 404, `IllegalArgumentException` → 400, validation errors → 400 with per-field map, upload size → 413. Services signal errors by throwing these rather than building responses.
 
 ## Security
 
 - Stateless JWT (jjwt). `JwtAuthenticationFilter` reads `Authorization: Bearer <token>`, extracts the email, re-loads the user from the DB, and grants a single authority equal to `Role` enum name (`ROLE_USER` / `ROLE_ADMIN`).
 - Login is two-step: credentials → 6-digit OTP emailed (5-minute expiry, stored on `User`) → `verify-otp` returns the JWT. User registration and forgot-password use the same OTP mechanism.
-- URL-level rules live in `Security/SecurityConfig`: `/api/v1/auth/**` is public; GETs on categories/reasonings/files/downloads are public; writes to those are `ROLE_ADMIN`; `/api/v1/admin/**` is `ROLE_ADMIN`; everything else requires authentication. When adding endpoints, update this matcher list.
+- URL-level rules live in `Security/SecurityConfig`: `/api/v1/auth/**` and the `/delete-account` page are public; GETs on categories/reasonings/files/downloads are public; writes to those are `ROLE_ADMIN`; `/api/v1/admin/**` is `ROLE_ADMIN`; everything else requires authentication. When adding endpoints, update this matcher list.
 - `@EnableMethodSecurity` is on, so `@PreAuthorize` is enforced. Write admin checks as `hasAuthority('ROLE_ADMIN')`, since the authority is the raw enum name.
 
 ## Git workflow
