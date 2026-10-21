@@ -12,6 +12,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   - Change the password with a code emailed to the current address (`POST /password/code`, then `PUT /password`).
   - Change the email with a code emailed to the new address (`POST /email/code`, then `PUT /email`, which returns a new JWT).
   - Wrong or expired codes answer 400.
+- Account deletion, as Google Play requires:
+  - From the app: a code emailed to the user (`POST /api/v1/users/me/delete/code`), then `DELETE /api/v1/users/me`.
+  - Without the app: a public page at `/delete-account` (the link for the Play Console), backed by `POST /api/v1/auth/delete-account/code` and `/confirm`.
+  - Deletes the account, favorites, recent downloads, the user's notifications, and their suggestions with their attachments. Download and view counts, ratings, and an admin's projects and replies are kept with no author.
 - Users have separate `firstName`/`lastName` columns. Registration accepts them (optional), and accounts that only have a `fullName` are split at the first space.
 - Code emails say what the code is for (password change, new email).
 - File list responses (reasoning files, search, novelties, recent downloads) include each file's `avgRating` and `totalRatings`.

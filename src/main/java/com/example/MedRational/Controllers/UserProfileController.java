@@ -8,10 +8,12 @@ import com.example.MedRational.DTOs.RequestEmailChangeDTO;
 import com.example.MedRational.DTOs.UpdateProfileRequestDTO;
 import com.example.MedRational.DTOs.UserProfileResponseDTO;
 import com.example.MedRational.Security.CurrentUserGuard;
+import com.example.MedRational.Services.Interfaces.AccountDeletionService;
 import com.example.MedRational.Services.Interfaces.UserProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -28,6 +30,7 @@ public class UserProfileController {
 
     private final UserProfileService userProfileService;
     private final CurrentUserGuard currentUserGuard;
+    private final AccountDeletionService accountDeletionService;
 
     @GetMapping
     public ResponseEntity<UserProfileResponseDTO> getProfile() {
@@ -64,5 +67,19 @@ public class UserProfileController {
     @PutMapping("/email")
     public ResponseEntity<AuthResponse> confirmEmailChange(@Valid @RequestBody ConfirmCodeRequestDTO request) {
         return ResponseEntity.ok(userProfileService.confirmEmailChange(currentUserGuard.requireCurrentUser(), request));
+    }
+
+    // Emails a code to the current address before deleting the account
+    @PostMapping("/delete/code")
+    public ResponseEntity<AuthMessageResponse> requestAccountDeletionCode() {
+        String message = accountDeletionService.requestCode(currentUserGuard.requireCurrentUser());
+        return ResponseEntity.ok(new AuthMessageResponse(message));
+    }
+
+    // Deletes the account; the token stops working right after
+    @DeleteMapping
+    public ResponseEntity<Void> deleteAccount(@Valid @RequestBody ConfirmCodeRequestDTO request) {
+        accountDeletionService.deleteAccount(currentUserGuard.requireCurrentUser(), request.getCode());
+        return ResponseEntity.noContent().build();
     }
 }

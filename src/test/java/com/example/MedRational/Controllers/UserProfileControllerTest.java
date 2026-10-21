@@ -7,6 +7,7 @@ import com.example.MedRational.DTOs.UserProfileResponseDTO;
 import com.example.MedRational.Entities.Role;
 import com.example.MedRational.Entities.User;
 import com.example.MedRational.Security.CurrentUserGuard;
+import com.example.MedRational.Services.Interfaces.AccountDeletionService;
 import com.example.MedRational.Services.Interfaces.UserProfileService;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
@@ -14,6 +15,7 @@ import org.springframework.security.access.AccessDeniedException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -23,7 +25,8 @@ class UserProfileControllerTest {
 
     private final UserProfileService service = mock(UserProfileService.class);
     private final CurrentUserGuard guard = mock(CurrentUserGuard.class);
-    private final UserProfileController controller = new UserProfileController(service, guard);
+    private final AccountDeletionService accountDeletionService = mock(AccountDeletionService.class);
+    private final UserProfileController controller = new UserProfileController(service, guard, accountDeletionService);
 
     private final User me = User.builder().id(1L).email("me@example.com").role(Role.ROLE_USER).build();
 
@@ -64,5 +67,30 @@ class UserProfileControllerTest {
         assertThrows(AccessDeniedException.class, controller::requestPasswordChangeCode);
         verify(service, never()).getProfile(any());
         verify(service, never()).requestPasswordChangeCode(any());
+    }
+
+    @Test
+    void theDeletionCodeGoesToTheSignedInUser() {
+        when(guard.requireCurrentUser()).thenReturn(me);
+        when(accountDeletionService.requestCode(me)).thenReturn("Verification code sent to me@example.com");
+
+        assertEquals("Verification code sent to me@example.com",
+                controller.requestAccountDeletionCode().getBody().getMessage());
+    }
+
+    @Test
+    void deletingTheAccountAnswersNoContent() {
+        when(guard.requireCurrentUser()).thenReturn(me);
+
+        assertEquals(204, controller.deleteAccount(new ConfirmCodeRequestDTO("123456")).getStatusCode().value());
+        verify(accountDeletionService).deleteAccount(me, "123456");
+    }
+
+    @Test
+    void anonymousCallersCannotDeleteAnAccount() {
+        when(guard.requireCurrentUser()).thenThrow(new AccessDeniedException("You need to be signed in"));
+
+        assertThrows(AccessDeniedException.class, () -> controller.deleteAccount(new ConfirmCodeRequestDTO("123456")));
+        verify(accountDeletionService, never()).deleteAccount(any(User.class), anyString());
     }
 }

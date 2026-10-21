@@ -23,8 +23,9 @@ public class WorkshopProject {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "author_id", nullable = false)
+    // Null once the account is deleted: the row stays, no longer traceable to anyone
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "author_id")
     private User author;
 
     @Column(nullable = false, length = 255)

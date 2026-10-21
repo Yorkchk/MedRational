@@ -24,8 +24,9 @@ public class SuggestionMessage {
     @JoinColumn(name = "suggestion_id", nullable = false)
     private Suggestion suggestion;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "author_id", nullable = false)
+    // Null once the account is deleted: the row stays, no longer traceable to anyone
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "author_id")
     private User author;
 
     @Column(name = "from_admin", nullable = false)

@@ -331,10 +331,12 @@ public class WorkshopProjectServiceImpl implements WorkshopProjectService {
                 ? project.getFormLink()
                 : null;
 
+        // No author once the admin who created it deleted their account
+        User author = project.getAuthor();
         return WorkshopProjectResponseDTO.builder()
                 .id(project.getId())
-                .authorId(project.getAuthor().getId())
-                .authorEmail(project.getAuthor().getEmail())
+                .authorId(author != null ? author.getId() : null)
+                .authorEmail(author != null ? author.getEmail() : null)
                 .title(project.getTitle())
                 .description(project.getDescription())
                 .projectType(project.getProjectType())

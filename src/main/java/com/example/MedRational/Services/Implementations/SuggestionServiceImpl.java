@@ -319,6 +319,10 @@ public class SuggestionServiceImpl implements SuggestionService {
     }
 
     private static String displayName(User user) {
+        // The author deleted their account
+        if (user == null) {
+            return null;
+        }
         return user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getEmail();
     }
 }

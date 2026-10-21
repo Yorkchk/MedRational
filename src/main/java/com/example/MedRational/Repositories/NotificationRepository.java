@@ -22,4 +22,9 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Modifying
     @Query("UPDATE Notification n SET n.isRead = true WHERE n.user.id = :userId")
     void markAllAsReadForUser(@Param("userId") Long userId);
+
+    // Account deletion: only the user's own rows, never the broadcasts (user IS NULL)
+    @Modifying
+    @Query("DELETE FROM Notification n WHERE n.user.id = :userId")
+    void deleteAllByUserId(@Param("userId") Long userId);
 }

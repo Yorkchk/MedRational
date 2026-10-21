@@ -6,9 +6,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -35,4 +38,13 @@ public interface SuggestionRepository extends JpaRepository<Suggestion, Long> {
               AND (s.adminLastReadAt IS NULL OR s.lastUserActivityAt > s.adminLastReadAt)
             """)
     long countUnreadByAdmin();
+
+    // Account deletion: the user's suggestions with their threads, to collect the attachments
+    @EntityGraph(attributePaths = {"messages"})
+    List<Suggestion> findAllByUserId(Long userId);
+
+    // Account deletion: replies the user wrote in other people's threads stay, with no author
+    @Modifying
+    @Query("UPDATE SuggestionMessage m SET m.author = null WHERE m.author.id = :userId")
+    void anonymizeMessagesByAuthorId(@Param("userId") Long userId);
 }

@@ -34,6 +34,8 @@ public class SecurityConfig {
                         // 1. Auth endpoints & Swagger
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        // Public account deletion page (Google Play link); its API is under /api/v1/auth/**
+                        .requestMatchers(HttpMethod.GET, "/delete-account", "/delete-account.html").permitAll()
 
                         // 2. Public read & download endpoints (Students / Guests)
                         .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
@@ -62,6 +64,7 @@ public class SecurityConfig {
                         // Statistics and other admin tools
                         .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")
 
+                        // Includes /api/v1/users/me (profile and account deletion), which take the user from the JWT
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

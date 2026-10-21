@@ -313,6 +313,20 @@ class WorkshopProjectServiceImplTest {
                 PROJECT_ID, edit(LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(2))));
     }
 
+    // The admin who created it deleted their account: the project stays, with no author
+    @Test
+    void aProjectWithoutAuthorStillShows() {
+        WorkshopProject project = project(ProjectStatus.OPEN);
+        project.setAuthor(null);
+        when(projectRepository.findById(PROJECT_ID)).thenReturn(Optional.of(project));
+
+        WorkshopProjectResponseDTO shown = service.getProjectById(PROJECT_ID, false);
+
+        assertEquals("Suturing", shown.getTitle());
+        assertNull(shown.getAuthorId());
+        assertNull(shown.getAuthorEmail());
+    }
+
     @Test
     void studentsDoNotSeeTheLinkBeforeRegistrationOpens() {
         when(projectRepository.findById(PROJECT_ID)).thenReturn(Optional.of(project(ProjectStatus.UPCOMING)));

@@ -6,6 +6,7 @@ import com.example.MedRational.Repositories.StatisticsRows.IdCount;
 import com.example.MedRational.Repositories.StatisticsRows.PeriodCount;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -69,4 +70,9 @@ public interface FileViewEventRepository extends JpaRepository<FileViewEvent, Lo
     List<BucketCount> countPerBucket(@Param("today") LocalDate today,
                                      @Param("since") LocalDateTime since,
                                      @Param("bucketDays") int bucketDays);
+
+    // Account deletion: the view still counts, but no longer points to anyone
+    @Modifying
+    @Query("UPDATE FileViewEvent v SET v.user = null WHERE v.user.id = :userId")
+    void anonymizeByUserId(@Param("userId") Long userId);
 }
