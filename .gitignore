@@ -32,13 +32,13 @@ build/
 ### VS Code ###
 .vscode/
 
-# Environment variables
+# Environment variables (.env, .env.dev, .env.uat, .env.prod...). Only the template is committed
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Supabase CLI scratch files
 supabase/snippets/
 
-# Firebase service-account key (secret): point FIREBASE_CREDENTIALS in .env at it
+# Firebase service-account key (secret): point FIREBASE_CREDENTIALS in .env.<profile> at it
 firebase-service-account*.json

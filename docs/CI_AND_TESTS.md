@@ -256,12 +256,15 @@ Your config files contain placeholders like `${JWT_SECRET}` and `${MAIL_HOST}`. 
 |---|---|---|
 | `SUPABASE_DB_*` | point at the CI Postgres container | ✅ yes, the app connects and creates its schema |
 | `JWT_SECRET` | a fake 50-character string | no (only used to sign tokens; must be ≥ 32 bytes for HMAC-SHA256) |
-| `CLOUDFLARE_*` | `ci-dummy` | no; the `S3Client` bean is *created* but never called at startup |
+| `CLOUDFLARE_*`, `R2_BUCKET` | `ci-dummy` | no; the `S3Client` bean is *created* but never called at startup |
+| `WORKSHOPS_PUSH_TOPIC` | `ci-dummy` | no; pushes are off without `FIREBASE_CREDENTIALS` |
 | `MAIL_*` | `localhost` / `ci-dummy` | no; the mail sender connects only when an email is sent |
 
 **Why not real values?** The workflow file is public, and CI must never be able to touch production data or send real email. If a future test ever needs a real key, it goes in **GitHub Secrets** (`${{ secrets.NAME }}`), never in the YAML.
 
-**Why your `.env` doesn't help on CI:** `.env` is git-ignored, so it doesn't exist on the VM. Also, `MedRationalApplication.main` loads `.env` (with `ignoreIfMissing()`), but tests don't call `main`, so tests only see real environment variables, which is what the `env:` block provides.
+Tests run with the default `dev` profile (`spring.profiles.default=dev`), the same as a local run without `SPRING_PROFILES_ACTIVE`.
+
+**Why your `.env` doesn't help on CI:** the `.env.*` files are git-ignored, so they don't exist on the VM. Also, `MedRationalApplication.main` loads `.env.<profile>` (with `ignoreIfMissing()`), but tests don't call `main`, so tests only see real environment variables, which is what the `env:` block provides.
 
 **Rule:** when you add a new `${SOMETHING}` to `application.yaml` or `application.properties`, add it to `.env.example` **and** to this `env:` block, or CI will fail with `Could not resolve placeholder 'SOMETHING'`.
 

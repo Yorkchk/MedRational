@@ -1,0 +1,14 @@
+# Acceptance testing: the uat Supabase cloud project and the uat R2 bucket.
+# Values come from .env.uat or the server's environment. The database has no defaults (see
+# application.properties), so a missing variable stops startup.
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 5   # the Supabase pooler caps client connections
+
+cloudflare:
+  r2:
+    bucket-name: ${R2_BUCKET:uat}
+
+push:
+  workshops-topic: ${WORKSHOPS_PUSH_TOPIC:workshops-uat}

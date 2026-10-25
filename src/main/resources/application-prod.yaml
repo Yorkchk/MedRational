@@ -1,0 +1,10 @@
+# Production: the prod Supabase cloud project and the prod R2 bucket.
+# Values come from .env.prod or the server's environment. The database and R2_BUCKET have no
+# defaults, so a missing variable stops startup.
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 5   # the Supabase pooler caps client connections
+
+push:
+  workshops-topic: ${WORKSHOPS_PUSH_TOPIC:workshops}   # the topic the Android app subscribes to

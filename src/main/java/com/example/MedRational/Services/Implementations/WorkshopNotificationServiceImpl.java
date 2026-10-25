@@ -9,8 +9,8 @@ import com.example.MedRational.Repositories.NotificationRepository;
 import com.example.MedRational.Services.Interfaces.PushMessage;
 import com.example.MedRational.Services.Interfaces.PushNotificationService;
 import com.example.MedRational.Services.Interfaces.WorkshopNotificationService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -21,12 +21,23 @@ import java.util.Map;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class WorkshopNotificationServiceImpl implements WorkshopNotificationService {
 
     private final NotificationRepository notificationRepository;
     private final JavaMailSender mailSender;
     private final PushNotificationService pushNotificationService;
+    // "workshops" in prod, which the app subscribes to; dev and uat use their own topic
+    private final String workshopsTopic;
+
+    public WorkshopNotificationServiceImpl(NotificationRepository notificationRepository,
+                                           JavaMailSender mailSender,
+                                           PushNotificationService pushNotificationService,
+                                           @Value("${push.workshops-topic}") String workshopsTopic) {
+        this.notificationRepository = notificationRepository;
+        this.mailSender = mailSender;
+        this.pushNotificationService = pushNotificationService;
+        this.workshopsTopic = workshopsTopic;
+    }
 
     // Announces a new project while it's still upcoming. The author just created it, so no email
     @Override
@@ -115,7 +126,7 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
     private void broadcast(WorkshopProject project, String title, String body, String event, NotifType type) {
         saveBroadcastNotification(title, body, project.getId(), type);
         pushNotificationService.sendToTopic(
-                PushNotificationService.WORKSHOPS_TOPIC,
+                workshopsTopic,
                 new PushMessage(title, body, pushLocalizationKey(event, project.getProjectType()), List.of(project.getTitle())),
                 Map.of("projectId", String.valueOf(project.getId()), "type", type.name()));
     }
