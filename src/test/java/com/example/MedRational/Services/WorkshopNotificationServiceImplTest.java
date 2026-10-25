@@ -37,13 +37,14 @@ import static org.mockito.Mockito.when;
 class WorkshopNotificationServiceImplTest {
 
     private static final long PROJECT_ID = 5L;
+    private static final String TOPIC = "workshops-uat";
 
     private final NotificationRepository notificationRepository = mock(NotificationRepository.class);
     private final JavaMailSender mailSender = mock(JavaMailSender.class);
     private final PushNotificationService push = mock(PushNotificationService.class);
 
     private final WorkshopNotificationServiceImpl service =
-            new WorkshopNotificationServiceImpl(notificationRepository, mailSender, push);
+            new WorkshopNotificationServiceImpl(notificationRepository, mailSender, push, TOPIC);
 
     private final WorkshopProject project = WorkshopProject.builder()
             .id(PROJECT_ID)
@@ -61,7 +62,7 @@ class WorkshopNotificationServiceImplTest {
 
         ArgumentCaptor<PushMessage> message = ArgumentCaptor.forClass(PushMessage.class);
         verify(push).sendToTopic(
-                eq(PushNotificationService.WORKSHOPS_TOPIC),
+                eq(TOPIC),
                 message.capture(),
                 eq(Map.of("projectId", "5", "type", type.name())));
         String title = message.getValue().title();
@@ -154,7 +155,7 @@ class WorkshopNotificationServiceImplTest {
     void notificationsStillGoOutWhenPushIsDisabled() {
         PushNotificationService disabled = (topic, message, data) -> { };
         WorkshopNotificationServiceImpl withoutPush =
-                new WorkshopNotificationServiceImpl(notificationRepository, mailSender, disabled);
+                new WorkshopNotificationServiceImpl(notificationRepository, mailSender, disabled, TOPIC);
 
         withoutPush.notifyRegistrationOpened(project);
 

@@ -19,9 +19,11 @@ The only existing test is a `@SpringBootTest` context load, so it needs a reacha
 
 ## Configuration
 
-- `MedRationalApplication.main` loads `.env` (via dotenv-java) into **system properties** before Spring starts. Values in `.env` are therefore only picked up when launched through `main` — not by test runs or tooling that bypass it — so tests need these set as real env vars or system properties.
-- Required variables: `SUPABASE_DB_*` (Postgres; `.env` has dev/prod blocks, toggled by commenting), `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_ACCESS_KEY_ID` / `CLOUDFLARE_SECRET_ACCESS_KEY`, `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD`, `JWT_SECRET`. Optional: `LIBREOFFICE_HOME` (see Previews below).
-- Config is split across two files: `application.properties` (datasource, JPA, multipart limits: 20MB/file, 50MB/request) and `application.yaml` (Cloudflare R2, mail, JWT, server).
+- **Environments** are Spring profiles: `dev` (default; local Supabase in Docker, `dev` R2 bucket), `uat` and `prod` (Supabase cloud projects over SSL, their own buckets). Choose with `SPRING_PROFILES_ACTIVE`, `-Dspring.profiles.active` or `--spring.profiles.active=`; an unknown value stops startup (`Config/EnvironmentFiles`).
+- `MedRationalApplication.main` loads `.env.<profile>` (dev falls back to `.env`) via dotenv-java into **system properties** before Spring starts. Real env vars win over the file, and empty values are skipped so profile defaults apply. Values in these files are only picked up when launched through `main`, not by test runs, so tests need real env vars. Every `.env.*` except `.env.example` is git-ignored.
+- Required variables: `SUPABASE_DB_*` (Postgres), `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_ACCESS_KEY_ID` / `CLOUDFLARE_SECRET_ACCESS_KEY`, `MAIL_HOST` / `MAIL_PORT` / `MAIL_USERNAME` / `MAIL_PASSWORD`, `JWT_SECRET`, and in prod `R2_BUCKET`. Optional: `R2_BUCKET` and `WORKSHOPS_PUSH_TOPIC` outside prod (profile defaults), `FIREBASE_CREDENTIALS`, `LIBREOFFICE_HOME` (see Previews below).
+- Config is split across `application.properties` (datasource without defaults, JPA, multipart limits: 20MB/file, 50MB/request), `application.yaml` (Cloudflare R2, push topic, mail, JWT, server) and `application-{dev,uat,prod}.yaml` (what differs per environment). Only dev has datasource defaults, so uat/prod fail at startup rather than reach the wrong database.
+- Workshop pushes go to `push.workshops-topic`: `workshops` (what the app subscribes to) only in prod, `workshops-dev` / `workshops-uat` otherwise, so test pushes never reach real users.
 - Schema is managed by Hibernate `ddl-auto=update` — there are no migrations. Entity changes alter the DB schema directly. The `supabase/` directory is only Supabase CLI local state.
 
 ## Architecture

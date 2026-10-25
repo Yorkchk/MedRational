@@ -34,6 +34,8 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ci-dummy
       CLOUDFLARE_ACCESS_KEY_ID: ci-dummy
       CLOUDFLARE_SECRET_ACCESS_KEY: ci-dummy
+      R2_BUCKET: ci-dummy
+      WORKSHOPS_PUSH_TOPIC: ci-dummy
       MAIL_HOST: localhost
       MAIL_PORT: 587
       MAIL_USERNAME: ci-dummy

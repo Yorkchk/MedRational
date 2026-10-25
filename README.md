@@ -62,16 +62,24 @@ All endpoints are under `/api/v1`.
 
 **Requirements:** JDK 21 and a PostgreSQL database (a Supabase project or a local Postgres). File uploads need a Cloudflare R2 bucket, and login needs an SMTP account.
 
-1. Copy the environment template and fill it in:
+1. Copy the environment template for each environment you run and fill it in:
    ```bash
-   cp .env.example .env
+   cp .env.example .env.dev      # also .env.uat, .env.prod
    ```
-   `.env` is git-ignored and loaded automatically at startup.
+   These files are git-ignored. At startup the app loads the one matching the active profile.
 2. Run the API (listens on port 8080):
    ```bash
-   ./mvnw spring-boot:run        # Windows: .\mvnw.cmd spring-boot:run
+   ./mvnw spring-boot:run                                    # dev (the default)
+   SPRING_PROFILES_ACTIVE=uat ./mvnw spring-boot:run         # PowerShell: $env:SPRING_PROFILES_ACTIVE="uat"; .\mvnw.cmd spring-boot:run
+   java -jar target/MedRational-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
    ```
-   Hibernate creates and updates the schema on startup (`ddl-auto=update`).
+   | Profile | Database | R2 bucket | Push topic |
+   |---|---|---|---|
+   | `dev` | local Supabase in Docker | `dev` | `workshops-dev` |
+   | `uat` | uat Supabase cloud project (SSL) | `R2_BUCKET`, default `uat` | `workshops-uat` |
+   | `prod` | prod Supabase cloud project (SSL) | `R2_BUCKET` (required) | `workshops` |
+
+   On a server, set the same variables as real environment variables instead of a file; they win over it. Hibernate creates and updates the schema on startup (`ddl-auto=update`), so a new cloud project needs no setup.
 
 ### Tests
 

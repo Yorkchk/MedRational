@@ -1,0 +1,14 @@
+# Local development: Supabase in Docker and the dev R2 bucket.
+# Values come from .env.dev (or .env); the defaults below match the local Supabase container (supabase/config.toml, db port 54322).
+spring:
+  datasource:
+    url: jdbc:postgresql://${SUPABASE_DB_HOST:127.0.0.1}:${SUPABASE_DB_PORT:54322}/${SUPABASE_DB_DATABASE:postgres}?sslmode=disable
+    username: ${SUPABASE_DB_USERNAME:postgres}
+    password: ${SUPABASE_DB_PASSWORD:postgres}
+
+cloudflare:
+  r2:
+    bucket-name: ${R2_BUCKET:dev}
+
+push:
+  workshops-topic: ${WORKSHOPS_PUSH_TOPIC:workshops-dev}

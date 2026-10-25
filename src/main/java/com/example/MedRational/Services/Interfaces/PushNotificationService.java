@@ -8,8 +8,5 @@ import java.util.Map;
  */
 public interface PushNotificationService {
 
-    // Every signed-in app is subscribed to it
-    String WORKSHOPS_TOPIC = "workshops";
-
     void sendToTopic(String topic, PushMessage message, Map<String, String> data);
 }
