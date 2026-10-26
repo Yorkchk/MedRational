@@ -81,6 +81,21 @@ All endpoints are under `/api/v1`.
 
    On a server, set the same variables as real environment variables instead of a file; they win over it. Hibernate creates and updates the schema on startup (`ddl-auto=update`), so a new cloud project needs no setup.
 
+### Run with Docker
+
+The `Dockerfile` builds one image for every environment, with LibreOffice included for Office previews. The profile, secrets and Firebase key are passed when the container starts:
+
+```bash
+docker build -t medrational .
+docker run --rm -p 8080:8080 --env-file .env.uat -e SPRING_PROFILES_ACTIVE=uat   -v ./firebase-service-account.json:/run/secrets/firebase.json:ro   -e FIREBASE_CREDENTIALS=/run/secrets/firebase.json medrational
+```
+
+- In PowerShell, use a full path for the key: `-v "${PWD}/firebase-service-account.json:/run/secrets/firebase.json:ro"`. With `./`, Docker mounts an empty directory instead and startup fails with "Couldn't read the Firebase key".
+- `--env-file` reads `KEY=VALUE` lines as is: no quotes and no comments after a value.
+- Leave `LIBREOFFICE_HOME` out of env files used with Docker, since a Windows path would replace the image's `/usr/lib/libreoffice`.
+- The container runs in UTC, which is Morocco's time since it moved to permanent GMT on 20 Sep 2026. Workshop dates have no time zone and are compared with the server clock, so it must match the zone admins enter dates in. Override it with `-e TZ=...`.
+- To reach the local Supabase from the container in dev, set `SUPABASE_DB_HOST=host.docker.internal`.
+
 ### Tests
 
 ```bash
