@@ -500,6 +500,27 @@ The bypass list is empty, so **the rules apply to admins too**, you included.
 
 Every new feature or behavior change ships **with tests in the same PR**, and every bug fix includes a **regression test** that fails without the fix. The PR template has a checklist item for this. Because CI must pass before merging, those tests then protect the feature on every future PR. §10 has the patterns to start from.
 
+### Publishing the Docker image
+
+After a merge, `.github/workflows/publish-image.yml` builds the backend image and pushes it to GitHub Container Registry:
+
+1. The merge to `main` runs **Backend CI** (the same `build` job as on PRs).
+2. When CI succeeds, **Publish image** starts (`workflow_run`) and builds the exact commit CI tested. If CI fails, no image is published.
+3. The image is pushed as:
+   - `ghcr.io/yorkchk/medrational:sha-<full commit>`: one per merge, never moved. Deployments use this tag, so prod gets exactly what was tested in uat.
+   - `ghcr.io/yorkchk/medrational:latest`: always the newest build from `main`.
+
+The run's summary page shows the pushed tag and its `docker pull` command. The images are listed under your GitHub profile → **Packages** → `medrational`.
+
+**Things to know:**
+- `workflow_run` workflows only run from the version on `main`, so changes to `publish-image.yml` can't be tested on their PR; they take effect after the merge.
+- The package is **private** by default. To pull it on the VPS (or locally), log in with a personal access token (classic) that has the `read:packages` scope:
+  ```bash
+  echo <token> | docker login ghcr.io -u Yorkchk --password-stdin
+  ```
+  Or make the package public in its **Package settings**; the image holds no secrets.
+- The build caches the Maven dependencies and LibreOffice layers in GitHub's Actions cache, so later builds are much faster than the first one.
+
 ---
 
 ## 9. Warnings from the first runs (to do)

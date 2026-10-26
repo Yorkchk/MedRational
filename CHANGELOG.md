@@ -6,6 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Every merge to `main` that passes CI publishes the API image to GitHub Container Registry as `ghcr.io/yorkchk/medrational:sha-<commit>` and `:latest`.
 - Docker image for the API (`Dockerfile`), with LibreOffice and fonts for Office previews. It runs as a non-root user in UTC (Morocco time), and the environment, secrets and Firebase key are passed at run time.
 - dev, uat and prod environments as Spring profiles (`SPRING_PROFILES_ACTIVE`, dev by default). Each one loads its own `.env.<profile>` file and has its own database, R2 bucket (`R2_BUCKET`) and workshop push topic (`WORKSHOPS_PUSH_TOPIC`). uat and prod connect to Supabase over SSL and have no database defaults, so a missing variable stops startup. Real environment variables win over the file.
 - Workshop push notifications carry localization keys (`title_loc_key`/`body_loc_key`, with the project title as the argument), so the Android app shows them in French or English. The English text stays as a fallback.

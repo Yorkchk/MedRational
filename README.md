@@ -83,7 +83,7 @@ All endpoints are under `/api/v1`.
 
 ### Run with Docker
 
-The `Dockerfile` builds one image for every environment, with LibreOffice included for Office previews. The profile, secrets and Firebase key are passed when the container starts:
+The `Dockerfile` builds one image for every environment, with LibreOffice included for Office previews. Every merge to `main` that passes CI also publishes it as `ghcr.io/yorkchk/medrational:sha-<commit>` and `:latest` (see [CI and tests](docs/CI_AND_TESTS.md#publishing-the-docker-image)), so you can `docker pull` it instead of building. The profile, secrets and Firebase key are passed when the container starts:
 
 ```bash
 docker build -t medrational .
