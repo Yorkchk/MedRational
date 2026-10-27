@@ -5,6 +5,12 @@ on:
   push:
     branches: [main]
 
+# A new push to a PR cancels its previous run. Runs on main always finish, since the image
+# publishing waits for them
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -54,3 +60,46 @@ jobs:
         run: |
           chmod +x mvnw
           ./mvnw -B verify
+
+      # Which tests failed and why, without rerunning locally
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: target/surefire-reports/
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: target/site/jacoco/
+          if-no-files-found: ignore
+
+      # Line coverage from JaCoCo's CSV (columns 8 and 9: lines missed, lines covered)
+      - name: Coverage summary
+        if: always()
+        run: |
+          csv=target/site/jacoco/jacoco.csv
+          if [ -f "$csv" ]; then
+            awk -F, 'NR > 1 { missed += $8; covered += $9 }
+              END { printf "### Line coverage: %.1f%% (%d of %d lines)\n", 100 * covered / (missed + covered), covered, missed + covered }' \
+              "$csv" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # Builds the Dockerfile on every PR, so a broken image is caught before the merge instead of in
+  # the publish workflow. Nothing is pushed; the cache is shared with publish-image.yml
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

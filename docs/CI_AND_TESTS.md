@@ -28,13 +28,13 @@ What happens automatically every time you open or update a pull request in **Med
 |---|---|---|
 | Workflow file | `.github/workflows/android-ci.yml` | `.github/workflows/backend-ci.yml` |
 | Workflow name (Actions tab) | **Android CI** | **Backend CI** |
-| Job name (status check) | `build` | `build` |
+| Job name (status check) | `build` | `build` (required), `docker` |
 | Runs on | every PR (opened or new commits pushed) + every push to `main` | same |
 | Machine | GitHub-hosted `ubuntu-latest` VM, fresh every run | same, plus a PostgreSQL 16 container |
-| Main command | `./gradlew lint testDebugUnitTest assembleDebug` | `./mvnw -B verify` |
+| Main command | `./gradlew lint testDebugUnitTest koverXmlReportDebug koverHtmlReportDebug assembleDebug assembleRelease` | `./mvnw -B verify` (tests + JaCoCo); the `docker` job builds the `Dockerfile` without pushing |
 | First run duration | **5 min 28 s** | **1 min 20 s** |
 | First run result | ✅ pass | ✅ pass |
-| Output kept after the run | `lint-report` artifact (HTML) | none |
+| Output kept after the run | `lint-report`, `coverage-report` (Kover HTML/XML), and `test-reports` when tests fail | `coverage-report` (JaCoCo HTML/CSV), and `test-reports` (Surefire) when tests fail |
 
 **Lifecycle of one PR:**
 
@@ -58,6 +58,13 @@ result shown on the PR, the commit, and the Actions tab; the VM is destroyed
 ```
 
 When the PR is merged, the push to `main` triggers the workflow once more. That keeps the README badge accurate for `main`.
+
+**Also on every run:**
+- **Coverage:** the run's summary page shows the line coverage of the unit tests, and the `coverage-report` artifact has the full HTML report (open `index.html`) showing which lines no test runs. It's a report only: there is no minimum yet.
+- **Failed tests:** the `test-reports` artifact holds the HTML (Android) or Surefire (backend) report, with each failing test's assertion and stack trace.
+- **Release build (Android):** `assembleRelease` runs R8, which shrinks and renames code. A class read by reflection (the Gson models in `data/model`) and missing a keep rule in `app/proguard-rules.pro` fails here, instead of crashing the released app. The APK is unsigned, since CI has no signing key.
+- **Docker image (backend):** the `docker` job builds the `Dockerfile` on every PR, so a broken image is caught before the merge instead of in the publish workflow. It isn't a required check yet.
+- **Cancelled runs:** pushing new commits to a PR cancels the run still going for the older ones. Runs on `main` always finish.
 
 ---
 
@@ -782,9 +789,11 @@ Ordered from most to least valuable for this project:
 |---|---|---|
 | Bump action versions | Merge the Dependabot `github-actions` PRs | Removes deprecation warnings |
 | Lint baseline | `./gradlew updateLintBaseline` + `baseline = file(...)` | Fail only on **new** lint issues |
-| Upload test reports | Another `actions/upload-artifact` step for `app/build/reports/tests/` and `target/surefire-reports/` | Read failures without re-running locally |
-| Code coverage | **JaCoCo** (Maven plugin `jacoco-maven-plugin`; Android `jacoco` or **Kover**) with a minimum threshold in `verify` | Shows which code no test touches |
-| Build the release APK in CI | Add `assembleRelease` | Catches R8 / keep-rule problems |
+| ~~Upload test reports~~ | Done: the `test-reports` artifact | Read failures without re-running locally |
+| ~~Code coverage report~~ | Done: JaCoCo (backend), Kover (Android) | Shows which code no test touches |
+| Coverage threshold | `jacoco:check` / `kover { verify { rule { minBound(...) } } }` set just below today's numbers | Coverage can't silently drop |
+| ~~Build the release APK in CI~~ | Done: `assembleRelease` | Catches R8 / keep-rule problems |
+| Make `docker` a required check | Add it to the `main` ruleset once it has run green for a while | A broken `Dockerfile` can't be merged |
 | Instrumented UI tests in CI | [`reactivecircus/android-emulator-runner`](https://github.com/ReactiveCircus/android-emulator-runner) + `connectedAndroidTest` | Real Compose UI tests on an emulator (slow; maybe nightly only) |
 | Release workflow | `on: push: tags: ['v*']` → build → `gh release create` with the APK/JAR attached | One-command releases |
 | Static analysis | **detekt** / **ktlint** (Kotlin), **Spotless** / **Checkstyle** (Java) | Consistent style, more bugs caught early |

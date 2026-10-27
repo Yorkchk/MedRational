@@ -37,6 +37,9 @@ build/
 .env.*
 !.env.example
 
+# Private server notes (IPs, steps for the throwaway uat server)
+docs/uat-server.md
+
 # Supabase CLI scratch files
 supabase/snippets/
 
