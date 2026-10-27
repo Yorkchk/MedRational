@@ -36,6 +36,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Analytics file items include the file's `reasoningId`.
 
 ### Fixed
+- Running the tests no longer leaves a LibreOffice process behind on Windows, which made the next local start fail to launch LibreOffice (`extensions.pmap` locked). The context test runs with the new `preview.office-enabled=false`.
 - Regular users can rate files: `POST`/`DELETE /api/v1/files/{fileId}/ratings` were admin-only, so rating returned 403.
 - Deleting a rated file, reasoning or category no longer fails on the `file_ratings` foreign key.
 - Rating stats are read with typed queries instead of an `Object[]` cast that could throw `ClassCastException`.

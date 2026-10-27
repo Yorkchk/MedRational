@@ -17,19 +17,24 @@ import java.io.ByteArrayOutputStream;
 
 // Owns the LibreOffice process. If LibreOffice is not installed the app still starts;
 // only Office -> PDF conversions fail (503), PDF previews keep working.
+// preview.office-enabled=false skips starting it, e.g. in tests that boot the app: on Windows a
+// test JVM can exit without stopping soffice, which then locks the profile for the next run.
 @Slf4j
 @Component
 public class OfficeConverter implements InitializingBean, DisposableBean {
 
+    private final boolean enabled;
     private final String officeHome;
     private final int portNumber;
     private final long taskExecutionTimeoutMs;
 
     private LocalOfficeManager officeManager;
 
-    public OfficeConverter(@Value("${preview.office-home:}") String officeHome,
+    public OfficeConverter(@Value("${preview.office-enabled:true}") boolean enabled,
+                           @Value("${preview.office-home:}") String officeHome,
                            @Value("${preview.port-numbers:2002}") int portNumber,
                            @Value("${preview.task-execution-timeout-ms:60000}") long taskExecutionTimeoutMs) {
+        this.enabled = enabled;
         this.officeHome = officeHome;
         this.portNumber = portNumber;
         this.taskExecutionTimeoutMs = taskExecutionTimeoutMs;
@@ -37,6 +42,10 @@ public class OfficeConverter implements InitializingBean, DisposableBean {
 
     @Override
     public void afterPropertiesSet() {
+        if (!enabled) {
+            log.info("LibreOffice is disabled (preview.office-enabled=false); Office document previews are off");
+            return;
+        }
         try {
             LocalOfficeManager.Builder builder = LocalOfficeManager.builder()
                     .portNumbers(portNumber)
