@@ -23,17 +23,11 @@ public class AuthController {
     }
 
     // -------------------------------------------------------------
-    // Unified Login (Admins & Regular Users: Email + Password -> OTP)
+    // Unified Login (Admins & Regular Users: Email + Password -> JWT, no code)
     // -------------------------------------------------------------
     @PostMapping("/login")
-    public ResponseEntity<AuthMessageResponse> login(@Valid @RequestBody LoginRequest request) {
-        String msg = authService.initiateLogin(request);
-        return ResponseEntity.ok(new AuthMessageResponse(msg));
-    }
-
-    @PostMapping("/verify-otp")
-    public ResponseEntity<AuthResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
-        return ResponseEntity.ok(authService.verifyOtp(request));
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
     }
 
     // -------------------------------------------------------------

@@ -45,7 +45,7 @@ All endpoints are under `/api/v1`.
 
 | Area | Base path |
 |---|---|
-| Auth | `/auth` (login, verify-otp, user/register, forgot-password, reset-password) |
+| Auth | `/auth` (login, user/register, user/verify-registration, forgot-password, reset-password) |
 | Categories | `/categories` |
 | Reasonings | `/reasonings` |
 | Study files | `/files`, `/files/{fileId}/ratings`, `/files/{fileId}/hashtags` |

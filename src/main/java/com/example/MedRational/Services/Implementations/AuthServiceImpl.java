@@ -3,6 +3,8 @@ package com.example.MedRational.Services.Implementations;
 import com.example.MedRational.DTOs.*;
 import com.example.MedRational.Entities.Role;
 import com.example.MedRational.Entities.User;
+import com.example.MedRational.Exceptions.EmailAlreadyRegisteredException;
+import com.example.MedRational.Exceptions.EmailNotVerifiedException;
 import com.example.MedRational.Repositories.UserRepository;
 import com.example.MedRational.Security.JwtUtil;
 import com.example.MedRational.Services.Interfaces.AuthService;
@@ -39,6 +41,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .role(Role.ROLE_ADMIN)
+                .emailVerified(true)
                 .build();
 
         userRepository.save(admin);
@@ -47,7 +50,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public String initiateLogin(LoginRequest request) {
+    public AuthResponse login(LoginRequest request) {
         String cleanEmail = request.getEmail().trim().toLowerCase();
 
         // 1. Look up user by email (regardless of whether they are ADMIN or USER)
@@ -60,37 +63,11 @@ public class AuthServiceImpl implements AuthService {
             throw new BadCredentialsException("Invalid email or password");
         }
 
-        // 3. Generate 6-digit OTP
-        String otp = String.format("%06d", new SecureRandom().nextInt(999999));
-        user.setOtpCode(otp);
-        user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
-        userRepository.save(user);
-
-        // 4. Send email
-        emailService.sendOtpEmail(user.getEmail(), otp);
-
-        return "Verification code sent to " + user.getEmail();
-    }
-
-    @Override
-    @Transactional
-    public AuthResponse verifyOtp(VerifyOtpRequest request) {
-        String cleanEmail = request.getEmail().trim().toLowerCase();
-
-        User user = userRepository.findByEmail(cleanEmail)
-                .orElseThrow(() -> new BadCredentialsException("User not found"));
-
-        if (user.getOtpCode() == null || !user.getOtpCode().equals(request.getCode().trim())) {
-            throw new BadCredentialsException("Invalid verification code");
+        // 3. Sign-in has no code, so the email must have been proven at sign-up
+        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new EmailNotVerifiedException("Email not verified. Sign up again to receive a new code.");
         }
 
-        if (user.getOtpExpiry().isBefore(LocalDateTime.now())) {
-            throw new BadCredentialsException("Verification code has expired");
-        }
-
-        // Clear OTP once used
-        user.setOtpCode(null);
-        user.setOtpExpiry(null);
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
@@ -115,7 +92,15 @@ public class AuthServiceImpl implements AuthService {
         String cleanEmail = request.getEmail().trim().toLowerCase();
         String cleanFullName = request.getFullName().trim();
 
-        // Retrieve existing user or create a new non-admin record
+        // A verified account belongs to whoever proved the email; never overwrite its password.
+        // An unverified one is an abandoned sign-up, so it can be taken over until the code is entered
+        userRepository.findByEmail(cleanEmail)
+                .filter(existing -> Boolean.TRUE.equals(existing.getEmailVerified()))
+                .ifPresent(existing -> {
+                    throw new EmailAlreadyRegisteredException("An account already exists with this email.");
+                });
+
+        // Retrieve the pending sign-up or create a new non-admin record
         User user = userRepository.findByEmail(cleanEmail)
                 .orElseGet(() -> User.builder()
                         .email(cleanEmail)
@@ -168,6 +153,7 @@ public class AuthServiceImpl implements AuthService {
         // Clear used OTP
         user.setOtpCode(null);
         user.setOtpExpiry(null);
+        user.setEmailVerified(true);
 
         // Update login timestamp
         user.setLastLoginAt(LocalDateTime.now());
@@ -226,10 +212,11 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Invalid verification code.");
         }
 
-        // Set new hashed password & clear OTP
+        // Set new hashed password & clear OTP. The code proves the email, so the account can sign in
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         user.setOtpCode(null);
         user.setOtpExpiry(null);
+        user.setEmailVerified(true);
         userRepository.save(user);
 
         return "Password updated successfully. You can now log in.";

@@ -55,7 +55,7 @@ Layered packages under `com.example.MedRational` (note the capitalized package n
 ## Security
 
 - Stateless JWT (jjwt). `JwtAuthenticationFilter` reads `Authorization: Bearer <token>`, extracts the email, re-loads the user from the DB, and grants a single authority equal to `Role` enum name (`ROLE_USER` / `ROLE_ADMIN`).
-- Login is two-step: credentials → 6-digit OTP emailed (5-minute expiry, stored on `User`) → `verify-otp` returns the JWT. User registration and forgot-password use the same OTP mechanism.
+- Login is email + password only: `/auth/login` returns the JWT, with no code. Only accounts with `emailVerified` may sign in; it is set when the sign-up code (`user/verify-registration`) or a forgot-password code is confirmed, and `EmailVerificationSchemaMigration` backfills it for existing accounts. Registering with the email of a verified account answers 409 and never touches it; an unverified (abandoned) sign-up can be redone. Sign-up, forgot-password and the profile flows (password, email change, account deletion) still use the 6-digit OTP (5-minute expiry, stored on `User`).
 - URL-level rules live in `Security/SecurityConfig`: `/api/v1/auth/**` and the `/delete-account` page are public; GETs on categories/reasonings/files/downloads are public; writes to those are `ROLE_ADMIN`; `/api/v1/admin/**` is `ROLE_ADMIN`; everything else requires authentication. When adding endpoints, update this matcher list.
 - `@EnableMethodSecurity` is on, so `@PreAuthorize` is enforced. Write admin checks as `hasAuthority('ROLE_ADMIN')`, since the authority is the raw enum name.
 

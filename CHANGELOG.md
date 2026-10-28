@@ -43,11 +43,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 - Analytics file items send `null` instead of `"Unassigned"` when a file has no reasoning or category.
+- Sign-in no longer emails a code: `POST /api/v1/auth/login` checks the email and password and returns the JWT right away. `/auth/verify-otp` is gone. Codes are still needed for sign-up, forgot password, and changing the password or email or deleting the account.
+- Wrong sign-in credentials answer 401 explicitly.
 
 ### Security
 - `/api/v1/admin/**` is admin only. Before this, any signed-in user could read the analytics.
 - `@EnableMethodSecurity` is on, so the existing `@PreAuthorize` admin checks on hashtags, suggestions and workshops are enforced. They used to be ignored.
 - The rating endpoints take the rater from the JWT; the `userId` request parameter, which let anyone rate as anyone, is gone.
+- Sign-up can no longer take over an existing account. Registering with the email of a verified account answered "code sent" after replacing that account's password and name. It now answers 409 and leaves the account untouched.
+- Only accounts whose email was confirmed with a code (`users.email_verified`) can sign in; others get 403. Existing accounts that have signed in before, and admins, are backfilled as verified at startup.
 
 ## [0.1.0] - 2026-10-08
 
