@@ -16,7 +16,8 @@ public interface UserProfileService {
 
     String requestPasswordChangeCode(User user);
 
-    String changePassword(User user, ChangePasswordRequestDTO request);
+    // Signs the other devices out and returns new tokens for this one
+    AuthResponse changePassword(User user, ChangePasswordRequestDTO request);
 
     String requestEmailChange(User user, RequestEmailChangeDTO request);
 

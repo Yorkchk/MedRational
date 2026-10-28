@@ -16,7 +16,7 @@ public class JwtUtil {
     @Value("${jwt.secret:mySuperSecretKeyThatIsAtLeast32BytesLongForSecurity!}")
     private String secretKey;
 
-    @Value("${jwt.expiration:86400000}") // 24 hours in ms
+    @Value("${jwt.expiration:3600000}") // 1 hour in ms; the app renews it with its refresh token
     private long jwtExpiration;
 
     private SecretKey getSigningKey() {

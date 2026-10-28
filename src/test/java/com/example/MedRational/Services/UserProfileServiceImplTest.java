@@ -12,7 +12,9 @@ import com.example.MedRational.Repositories.UserRepository;
 import com.example.MedRational.Security.JwtUtil;
 import com.example.MedRational.Services.Implementations.UserProfileServiceImpl;
 import com.example.MedRational.Services.Interfaces.EmailService;
+import com.example.MedRational.Services.Interfaces.UserSessionService;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Clock;
@@ -26,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -41,9 +44,10 @@ class UserProfileServiceImplTest {
     private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
     private final EmailService emailService = mock(EmailService.class);
     private final JwtUtil jwtUtil = mock(JwtUtil.class);
+    private final UserSessionService sessionService = mock(UserSessionService.class);
 
     private final UserProfileServiceImpl service =
-            new UserProfileServiceImpl(userRepository, passwordEncoder, emailService, jwtUtil, CLOCK);
+            new UserProfileServiceImpl(userRepository, passwordEncoder, emailService, jwtUtil, CLOCK, sessionService);
 
     private User user() {
         return User.builder()
@@ -122,6 +126,24 @@ class UserProfileServiceImplTest {
         assertNull(user.getOtpExpiry());
     }
 
+    // Other devices are signed out; this one gets a new session, started after the others ended
+    @Test
+    void changingThePasswordSignsOtherDevicesOutAndKeepsThisOne() {
+        User user = withCode(user(), "123456", NOW.plusMinutes(2));
+        when(passwordEncoder.encode("newSecret")).thenReturn("hashed");
+        when(jwtUtil.generateToken("old@example.com", "ROLE_USER")).thenReturn("jwt-2");
+        when(sessionService.start(user)).thenReturn("refresh-2");
+
+        AuthResponse response = service.changePassword(user, new ChangePasswordRequestDTO("123456", "newSecret"));
+
+        InOrder order = inOrder(sessionService);
+        order.verify(sessionService).endAll(user);
+        order.verify(sessionService).start(user);
+        assertEquals("jwt-2", response.getToken());
+        assertEquals("refresh-2", response.getRefreshToken());
+        assertEquals("Password updated successfully.", response.getMessage());
+    }
+
     @Test
     void wrongCodeIsABadRequestAndKeepsThePassword() {
         User user = withCode(user(), "123456", NOW.plusMinutes(2));
@@ -132,6 +154,7 @@ class UserProfileServiceImplTest {
 
         assertEquals("old-hash", user.getPasswordHash());
         verify(userRepository, never()).save(any());
+        verify(sessionService, never()).endAll(any());
     }
 
     @Test
@@ -178,6 +201,7 @@ class UserProfileServiceImplTest {
         user.setPendingEmail("new@example.com");
         when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
         when(jwtUtil.generateToken("new@example.com", "ROLE_USER")).thenReturn("new-token");
+        when(sessionService.start(user)).thenReturn("refresh-2");
 
         AuthResponse response = service.confirmEmailChange(user, new ConfirmCodeRequestDTO("123456"));
 
@@ -187,6 +211,9 @@ class UserProfileServiceImplTest {
         assertEquals("new-token", response.getToken());
         assertEquals("new@example.com", response.getEmail());
         assertEquals(1L, response.getUserId());
+        // Other devices' tokens name the old email: they're signed out, this one gets a new session
+        verify(sessionService).endAll(user);
+        assertEquals("refresh-2", response.getRefreshToken());
     }
 
     @Test

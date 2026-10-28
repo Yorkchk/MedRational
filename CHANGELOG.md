@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Staying signed in: sign-in returns a refresh token next to the JWT, and `POST /api/v1/auth/refresh` trades it for a new pair, so the app only asks to sign in again after 60 days without use. `POST /api/v1/auth/logout` ends a device's session.
+  - Sessions are stored one row per device (`user_sessions`, token hashes only) and end on sign-out, password change or reset, email change and account deletion.
+  - The JWT now lasts 1 hour instead of 24.
+  - `PUT /api/v1/users/me/password` returns new tokens (`AuthResponse`, still with `message`), since the change signs every other device out.
+  - A missing or expired token answers 401 instead of 403; 403 now only means a signed-in user isn't allowed.
 - Every merge to `main` that passes CI publishes the API image to GitHub Container Registry as `ghcr.io/yorkchk/medrational:sha-<commit>` and `:latest`.
 - Docker image for the API (`Dockerfile`), with LibreOffice and fonts for Office previews. It runs as a non-root user in UTC (Morocco time), and the environment, secrets and Firebase key are passed at run time.
 - dev, uat and prod environments as Spring profiles (`SPRING_PROFILES_ACTIVE`, dev by default). Each one loads its own `.env.<profile>` file and has its own database, R2 bucket (`R2_BUCKET`) and workshop push topic (`WORKSHOPS_PUSH_TOPIC`). uat and prod connect to Supabase over SSL and have no database defaults, so a missing variable stops startup. Real environment variables win over the file.
