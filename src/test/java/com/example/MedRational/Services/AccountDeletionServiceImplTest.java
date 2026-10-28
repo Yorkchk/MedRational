@@ -13,6 +13,7 @@ import com.example.MedRational.Repositories.NotificationRepository;
 import com.example.MedRational.Repositories.SuggestionRepository;
 import com.example.MedRational.Repositories.UserFileDownloadRepository;
 import com.example.MedRational.Repositories.UserRepository;
+import com.example.MedRational.Repositories.UserSessionRepository;
 import com.example.MedRational.Repositories.WorkshopProjectRepository;
 import com.example.MedRational.Services.Implementations.AccountDeletionServiceImpl;
 import com.example.MedRational.Services.Implementations.SuggestionAttachmentStore;
@@ -59,11 +60,12 @@ class AccountDeletionServiceImplTest {
     private final WorkshopProjectRepository workshopProjectRepository = mock(WorkshopProjectRepository.class);
     private final SuggestionAttachmentStore attachmentStore = mock(SuggestionAttachmentStore.class);
     private final EmailService emailService = mock(EmailService.class);
+    private final UserSessionRepository sessionRepository = mock(UserSessionRepository.class);
 
     private final AccountDeletionServiceImpl service = new AccountDeletionServiceImpl(
             userRepository, favoriteRepository, userFileDownloadRepository, notificationRepository,
             suggestionRepository, downloadEventRepository, viewEventRepository, ratingRepository,
-            workshopProjectRepository, attachmentStore, emailService, CLOCK);
+            workshopProjectRepository, attachmentStore, emailService, CLOCK, sessionRepository);
 
     private User user() {
         return User.builder().id(USER_ID).email("sara@example.com").fullName("Sara Idrissi")
@@ -144,6 +146,8 @@ class AccountDeletionServiceImplTest {
         verify(favoriteRepository).deleteAllByUserId(USER_ID);
         verify(userFileDownloadRepository).deleteAllByUserId(USER_ID);
         verify(notificationRepository).deleteAllByUserId(USER_ID);
+        // Every device is signed out
+        verify(sessionRepository).deleteAllByUserId(USER_ID);
         verify(downloadEventRepository).anonymizeByUserId(USER_ID);
         verify(viewEventRepository).anonymizeByUserId(USER_ID);
         verify(ratingRepository).anonymizeByUserId(USER_ID);
@@ -160,9 +164,10 @@ class AccountDeletionServiceImplTest {
 
         service.deleteAccount(user, "123456");
 
-        InOrder order = inOrder(favoriteRepository, ratingRepository, workshopProjectRepository,
+        InOrder order = inOrder(favoriteRepository, sessionRepository, ratingRepository, workshopProjectRepository,
                 suggestionRepository, userRepository);
         order.verify(favoriteRepository).deleteAllByUserId(USER_ID);
+        order.verify(sessionRepository).deleteAllByUserId(USER_ID);
         order.verify(ratingRepository).anonymizeByUserId(USER_ID);
         order.verify(workshopProjectRepository).anonymizeByAuthorId(USER_ID);
         order.verify(suggestionRepository).anonymizeMessagesByAuthorId(USER_ID);

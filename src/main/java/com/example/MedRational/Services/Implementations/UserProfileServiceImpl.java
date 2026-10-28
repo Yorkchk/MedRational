@@ -11,6 +11,7 @@ import com.example.MedRational.Repositories.UserRepository;
 import com.example.MedRational.Security.JwtUtil;
 import com.example.MedRational.Services.Interfaces.EmailService;
 import com.example.MedRational.Services.Interfaces.UserProfileService;
+import com.example.MedRational.Services.Interfaces.UserSessionService;
 import com.example.MedRational.Services.Support.OtpCodes;
 import com.example.MedRational.Services.Support.UserNames;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     private final EmailService emailService;
     private final JwtUtil jwtUtil;
     private final Clock clock;
+    private final UserSessionService sessionService;
 
     @Override
     public UserProfileResponseDTO getProfile(User user) {
@@ -64,11 +66,12 @@ public class UserProfileServiceImpl implements UserProfileService {
 
     @Override
     @Transactional
-    public String changePassword(User user, ChangePasswordRequestDTO request) {
+    public AuthResponse changePassword(User user, ChangePasswordRequestDTO request) {
         OtpCodes.consume(user, request.getCode(), clock);
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
-        return "Password updated successfully.";
+        // Other devices are signed out; this one gets a new session so it stays signed in
+        return newSession(user, "Password updated successfully.");
     }
 
     @Override
@@ -108,15 +111,22 @@ public class UserProfileServiceImpl implements UserProfileService {
         user.setPendingEmail(null);
         userRepository.save(user);
 
-        // The JWT subject is the email, so the old token stops working: hand out a new one
-        String token = jwtUtil.generateToken(newEmail, user.getRole().name());
+        // The JWT subject is the email, so the old token stops working: hand out a new one. Other
+        // devices are signed out, since their tokens name the old email
+        return newSession(user, "Email updated successfully.");
+    }
+
+    // Ends every session of the user and starts one for the device making the request
+    private AuthResponse newSession(User user, String message) {
+        sessionService.endAll(user);
         return AuthResponse.builder()
-                .token(token)
+                .token(jwtUtil.generateToken(user.getEmail(), user.getRole().name()))
+                .refreshToken(sessionService.start(user))
                 .role(user.getRole().name())
                 .userId(user.getId())
-                .email(newEmail)
+                .email(user.getEmail())
                 .fullName(user.getFullName())
-                .message("Email updated successfully.")
+                .message(message)
                 .build();
     }
 

@@ -11,6 +11,7 @@ import com.example.MedRational.Repositories.NotificationRepository;
 import com.example.MedRational.Repositories.SuggestionRepository;
 import com.example.MedRational.Repositories.UserFileDownloadRepository;
 import com.example.MedRational.Repositories.UserRepository;
+import com.example.MedRational.Repositories.UserSessionRepository;
 import com.example.MedRational.Repositories.WorkshopProjectRepository;
 import com.example.MedRational.Services.Interfaces.AccountDeletionService;
 import com.example.MedRational.Services.Interfaces.EmailService;
@@ -26,7 +27,8 @@ import java.util.List;
 // Deletes what can identify the user (account, favorites, recent downloads, own notifications,
 // suggestions and their files). What only feeds counts stays with the user set to null: download and
 // view events, ratings (so averages don't move), and an admin's projects and replies.
-// user_daily_activity goes with the user row (ON DELETE CASCADE).
+// user_daily_activity goes with the user row (ON DELETE CASCADE). Sessions (signed-in devices) are
+// deleted, which also signs every device out.
 @Service
 @RequiredArgsConstructor
 public class AccountDeletionServiceImpl implements AccountDeletionService {
@@ -45,6 +47,7 @@ public class AccountDeletionServiceImpl implements AccountDeletionService {
     private final SuggestionAttachmentStore attachmentStore;
     private final EmailService emailService;
     private final Clock clock;
+    private final UserSessionRepository sessionRepository;
 
     @Override
     @Transactional
@@ -92,6 +95,7 @@ public class AccountDeletionServiceImpl implements AccountDeletionService {
         favoriteRepository.deleteAllByUserId(userId);
         userFileDownloadRepository.deleteAllByUserId(userId);
         notificationRepository.deleteAllByUserId(userId);
+        sessionRepository.deleteAllByUserId(userId);
 
         downloadEventRepository.anonymizeByUserId(userId);
         viewEventRepository.anonymizeByUserId(userId);

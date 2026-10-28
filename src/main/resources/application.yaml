@@ -25,7 +25,8 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET}
-  expiration: 86400000
+  expiration: 3600000           # access token: 1 hour; the app renews it with its refresh token
+  refresh-expiration-days: 60   # a device unused for this long has to sign in again
 
 server:
   port: 8080

@@ -31,6 +31,20 @@ public class AuthController {
     }
 
     // -------------------------------------------------------------
+    // Staying signed in: the app trades its refresh token when the JWT expires
+    // -------------------------------------------------------------
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(authService.refresh(request));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
+        authService.logout(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    // -------------------------------------------------------------
     // User Registration (New Users: Name, Email, Phone, Pass -> OTP -> Back to Welcome)
     // -------------------------------------------------------------
     @PostMapping("/user/register")

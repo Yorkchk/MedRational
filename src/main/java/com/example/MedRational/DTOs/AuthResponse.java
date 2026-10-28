@@ -11,6 +11,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AuthResponse {
     private String token;
+    // Trades for a new token when this one expires (/auth/refresh); null when no session was started
+    private String refreshToken;
     private String role;
     private Long userId;
     private String email;

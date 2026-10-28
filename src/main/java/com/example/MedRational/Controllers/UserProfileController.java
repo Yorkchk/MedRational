@@ -50,10 +50,11 @@ public class UserProfileController {
         return ResponseEntity.ok(new AuthMessageResponse(message));
     }
 
+    // Returns new tokens: the change signs every other device out. Still has "message", so apps that
+    // only read that keep working
     @PutMapping("/password")
-    public ResponseEntity<AuthMessageResponse> changePassword(@Valid @RequestBody ChangePasswordRequestDTO request) {
-        String message = userProfileService.changePassword(currentUserGuard.requireCurrentUser(), request);
-        return ResponseEntity.ok(new AuthMessageResponse(message));
+    public ResponseEntity<AuthResponse> changePassword(@Valid @RequestBody ChangePasswordRequestDTO request) {
+        return ResponseEntity.ok(userProfileService.changePassword(currentUserGuard.requireCurrentUser(), request));
     }
 
     // Emails a code to the new address

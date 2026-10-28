@@ -2,6 +2,7 @@ package com.example.MedRational.Services;
 
 import com.example.MedRational.DTOs.AuthResponse;
 import com.example.MedRational.DTOs.LoginRequest;
+import com.example.MedRational.DTOs.RefreshTokenRequest;
 import com.example.MedRational.DTOs.ResetPasswordRequest;
 import com.example.MedRational.DTOs.UserRegisterRequestDTO;
 import com.example.MedRational.DTOs.UserVerifyOtpRequestDTO;
@@ -13,6 +14,7 @@ import com.example.MedRational.Repositories.UserRepository;
 import com.example.MedRational.Security.JwtUtil;
 import com.example.MedRational.Services.Implementations.AuthServiceImpl;
 import com.example.MedRational.Services.Interfaces.EmailService;
+import com.example.MedRational.Services.Interfaces.UserSessionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,6 +24,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,8 +42,10 @@ class AuthServiceImplTest {
     private final PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
     private final EmailService emailService = mock(EmailService.class);
     private final JwtUtil jwtUtil = mock(JwtUtil.class);
+    private final UserSessionService sessionService = mock(UserSessionService.class);
 
-    private final AuthServiceImpl service = new AuthServiceImpl(userRepository, passwordEncoder, emailService, jwtUtil);
+    private final AuthServiceImpl service =
+            new AuthServiceImpl(userRepository, passwordEncoder, emailService, jwtUtil, sessionService);
 
     private User user(Boolean emailVerified) {
         User user = User.builder()
@@ -73,6 +78,7 @@ class AuthServiceImplTest {
         User user = user(true);
         when(passwordEncoder.matches("secret1", "hash")).thenReturn(true);
         when(jwtUtil.generateToken("sara@example.com", "ROLE_USER")).thenReturn("jwt");
+        when(sessionService.start(user)).thenReturn("refresh-1");
 
         AuthResponse auth = service.login(login("secret1"));
 
@@ -80,6 +86,8 @@ class AuthServiceImplTest {
         assertEquals("ROLE_USER", auth.getRole());
         assertEquals(1L, auth.getUserId());
         assertEquals("sara@example.com", auth.getEmail());
+        // Keeps this device signed in once the JWT expires
+        assertEquals("refresh-1", auth.getRefreshToken());
         assertNotNull(user.getLastLoginAt());
         verifyNoInteractions(emailService);
     }
@@ -108,6 +116,7 @@ class AuthServiceImplTest {
 
         assertThrows(EmailNotVerifiedException.class, () -> service.login(login("secret1")));
         verify(jwtUtil, never()).generateToken(anyString(), anyString());
+        verify(sessionService, never()).start(any());
     }
 
     // Regression: sign-up used to replace the password of an existing account before any code
@@ -144,6 +153,8 @@ class AuthServiceImplTest {
         service.verifyUserOtp(new UserVerifyOtpRequestDTO("sara@example.com", "123456"));
 
         assertTrue(pending.getEmailVerified());
+        // The app signs in after signing up, so no session is left unused here
+        verify(sessionService, never()).start(any());
     }
 
     // The reset code proves the email too, so the account can sign in afterwards
@@ -158,5 +169,49 @@ class AuthServiceImplTest {
 
         assertTrue(pending.getEmailVerified());
         assertEquals("hash2", pending.getPasswordHash());
+    }
+
+    // Whoever knew the old password is signed out everywhere
+    @Test
+    void resettingThePasswordSignsEveryDeviceOut() {
+        User user = user(true);
+        user.setOtpCode("123456");
+        user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
+        when(passwordEncoder.encode("secret2")).thenReturn("hash2");
+
+        service.resetPassword(new ResetPasswordRequest("sara@example.com", "123456", "secret2"));
+
+        verify(sessionService).endAll(user);
+    }
+
+    @Test
+    void aValidRefreshTokenGivesANewPair() {
+        User user = user(true);
+        when(sessionService.renew("refresh-1")).thenReturn(new UserSessionService.Renewed(user, "refresh-2"));
+        when(jwtUtil.generateToken("sara@example.com", "ROLE_USER")).thenReturn("jwt-2");
+
+        AuthResponse auth = service.refresh(new RefreshTokenRequest("refresh-1"));
+
+        assertEquals("jwt-2", auth.getToken());
+        assertEquals("refresh-2", auth.getRefreshToken());
+        assertEquals(1L, auth.getUserId());
+        // A renewal isn't a sign-in
+        assertNull(user.getLastLoginAt());
+    }
+
+    // 401, so the app knows the session is over and shows the login screen
+    @Test
+    void anEndedSessionCannotBeRenewed() {
+        when(sessionService.renew("old")).thenThrow(new BadCredentialsException("Session expired"));
+
+        assertThrows(BadCredentialsException.class, () -> service.refresh(new RefreshTokenRequest("old")));
+        verify(jwtUtil, never()).generateToken(anyString(), anyString());
+    }
+
+    @Test
+    void signingOutEndsThisDevicesSession() {
+        service.logout(new RefreshTokenRequest("refresh-1"));
+
+        verify(sessionService).end("refresh-1");
     }
 }

@@ -9,6 +9,7 @@ import com.example.MedRational.Repositories.UserRepository;
 import com.example.MedRational.Security.JwtUtil;
 import com.example.MedRational.Services.Interfaces.AuthService;
 import com.example.MedRational.Services.Interfaces.EmailService;
+import com.example.MedRational.Services.Interfaces.UserSessionService;
 import com.example.MedRational.Services.Support.UserNames;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final JwtUtil jwtUtil;
+    private final UserSessionService sessionService;
 
     // --- Admin Endpoints ---
     @Override
@@ -71,16 +73,34 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
-        // Generate token with user details and their actual role (ROLE_ADMIN or ROLE_USER)
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
+        // A short-lived JWT for the requests, and a refresh token that keeps this device signed in
+        return authResponse(user, sessionService.start(user), "Authentication successful");
+    }
 
+    @Override
+    @Transactional
+    public AuthResponse refresh(RefreshTokenRequest request) {
+        UserSessionService.Renewed renewed = sessionService.renew(request.getRefreshToken());
+        // Not a sign-in: last_login_at keeps the last time the password was typed
+        return authResponse(renewed.user(), renewed.refreshToken(), "Session renewed");
+    }
+
+    @Override
+    @Transactional
+    public void logout(RefreshTokenRequest request) {
+        sessionService.end(request.getRefreshToken());
+    }
+
+    // The JWT carries the user's current role, so a role change applies at the next renewal
+    private AuthResponse authResponse(User user, String refreshToken, String message) {
         return AuthResponse.builder()
-                .token(token)
+                .token(jwtUtil.generateToken(user.getEmail(), user.getRole().name()))
+                .refreshToken(refreshToken)
                 .role(user.getRole().name())
                 .userId(user.getId())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
-                .message("Authentication successful")
+                .message(message)
                 .build();
     }
 
@@ -218,6 +238,8 @@ public class AuthServiceImpl implements AuthService {
         user.setOtpExpiry(null);
         user.setEmailVerified(true);
         userRepository.save(user);
+        // Whoever knew the old password is signed out everywhere
+        sessionService.endAll(user);
 
         return "Password updated successfully. You can now log in.";
     }
