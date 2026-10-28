@@ -50,6 +50,12 @@ public class User {
     @Column(name = "otp_expiry")
     private LocalDateTime otpExpiry;
 
+    // True once the owner proved the email with a code (sign-up, password reset). Sign-in only
+    // needs the password, so unverified accounts can't sign in and sign-up can't overwrite verified
+    // ones. Nullable because ddl-auto can't add a NOT NULL column to existing rows; null means false
+    @Column(name = "email_verified")
+    private Boolean emailVerified;
+
     // New address waiting for its emailed code; the email only changes once the code is confirmed
     @Column(name = "pending_email", length = 255)
     private String pendingEmail;

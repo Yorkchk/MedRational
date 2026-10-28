@@ -6,15 +6,14 @@ public interface AuthService {
 
     String createAdmin(CreateAdminRequest request);
 
-    String initiateLogin(LoginRequest request);
-
-    AuthResponse verifyOtp(VerifyOtpRequest request);
+    // Email + password only: no code at sign-in
+    AuthResponse login(LoginRequest request);
 
     // --- Normal User (Non-Admin) Flows ---
-    // Initiates registration or login: saves user as non-admin, generates and emails OTP
+    // Starts sign-up: saves the unverified user as non-admin, generates and emails OTP
     String initiateUserAuth(UserRegisterRequestDTO request);
 
-    // Verifies OTP and returns JWT token + user details
+    // Verifies the sign-up OTP, marks the email verified and returns JWT token + user details
     UserAuthResponseDTO verifyUserOtp(UserVerifyOtpRequestDTO request);
     String initiatePasswordReset(ForgotPasswordRequest request);
     String resetPassword(ResetPasswordRequest request);
