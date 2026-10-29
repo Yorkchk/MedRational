@@ -87,7 +87,7 @@ The `Dockerfile` builds one image for every environment, with LibreOffice includ
 
 ```bash
 docker build -t medrational .
-docker run --rm -p 8080:8080 --env-file .env.uat -e SPRING_PROFILES_ACTIVE=uat   -v ./firebase-service-account.json:/run/secrets/firebase.json:ro   -e FIREBASE_CREDENTIALS=/run/secrets/firebase.json medrational
+docker run --rm -p 8080:8080 --env-file .env.uat -e SPRING_PROFILES_ACTIVE=uat   -v ./google-services.json:/run/secrets/firebase.json:ro   -e FIREBASE_CREDENTIALS=/run/secrets/firebase.json medrational
 ```
 
 - In PowerShell, use a full path for the key: `-v "${PWD}/firebase-service-account.json:/run/secrets/firebase.json:ro"`. With `./`, Docker mounts an empty directory instead and startup fails with "Couldn't read the Firebase key".
