@@ -44,4 +44,4 @@ docs/uat-server.md
 supabase/snippets/
 
 # Firebase service-account key (secret): point FIREBASE_CREDENTIALS in .env.<profile> at it
-firebase-service-account*.json
+firebase-service-account.json

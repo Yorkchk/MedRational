@@ -49,7 +49,7 @@ On the uat server:
 ```bash
 cd /opt/medrational
 sudo chown deploy:deploy .env.uat && sudo chmod 600 .env.uat     # read by docker compose
-sudo chown 1001:1001 firebase-service-account.json && sudo chmod 400 firebase-service-account.json   # read by the app
+sudo chown 1001:1001 google-services.json && sudo chmod 400 google-services.json   # read by the app
 ```
 If the GHCR package is private:
 ```bash
@@ -67,7 +67,7 @@ services:
       SPRING_PROFILES_ACTIVE: uat
       FIREBASE_CREDENTIALS: /run/secrets/firebase.json
     volumes:
-      - ./firebase-service-account.json:/run/secrets/firebase.json:ro
+      - ./google-services.json:/run/secrets/firebase.json:ro
     ports: ["8080:8080"]   # public on purpose: the uat firewall allows 8080
     restart: unless-stopped
 ```
