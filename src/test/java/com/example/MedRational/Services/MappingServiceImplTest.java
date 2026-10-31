@@ -20,4 +20,11 @@ class MappingServiceImplTest {
         assertEquals(4.5, response.getAvgRating());
         assertEquals(12, response.getTotalRatings());
     }
+
+    @Test
+    void studyFileResponseCarriesTheDescription() {
+        StudyFile file = StudyFile.builder().id(7L).fileName("ecg.pdf").description("Normal sinus rhythm").build();
+
+        assertEquals("Normal sinus rhythm", mapping.toStudyFileResponse(file).getDescription());
+    }
 }

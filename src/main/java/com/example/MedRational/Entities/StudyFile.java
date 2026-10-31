@@ -41,6 +41,10 @@ public class StudyFile {
     @Column(name = "file_size_bytes")
     private Long fileSizeBytes;
 
+    // Written by the admin at upload, null when left empty
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
     // Precomputed rating metrics for high-speed reads
     @Column(name = "avg_rating", nullable = false)
     @Builder.Default

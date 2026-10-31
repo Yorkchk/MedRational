@@ -14,6 +14,7 @@ public class StudyFileResponse {
     private String publicUrl;
     private boolean previewable;
     private Long fileSizeBytes;
+    private String description;
     private Double avgRating;
     private Integer totalRatings;
     private LocalDateTime uploadedAt;

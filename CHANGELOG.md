@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Study files have an optional description: `POST /api/v1/files/upload/{reasoningId}` and `/upload-batch/{reasoningId}` take a `description` part (a batch puts it on every file), and `StudyFileResponse` returns it.
+- Admins can edit a study file with `PUT /api/v1/files/{id}` (`{title, description}`). The title replaces the name without its extension, which is kept, and a blank description clears it.
 - A push notification tells students about new study files. It is sent as soon as a file is uploaded, and a batch upload sends one push for all its files ("3 new files in Heart Failure"). They show on their own Android channel (`new_files`), and are stored as `NEW_FILES` notifications.
 - Staying signed in: sign-in returns a refresh token next to the JWT, and `POST /api/v1/auth/refresh` trades it for a new pair, so the app only asks to sign in again after 60 days without use. `POST /api/v1/auth/logout` ends a device's session.
   - Sessions are stored one row per device (`user_sessions`, token hashes only) and end on sign-out, password change or reset, email change and account deletion.
@@ -48,6 +50,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Rating stats are read with typed queries instead of an `Object[]` cast that could throw `ClassCastException`.
 
 ### Changed
+- Reasoning and category zip downloads only contain the study files: the `summary.md` in each reasoning folder is gone.
 - Analytics file items send `null` instead of `"Unassigned"` when a file has no reasoning or category.
 - Sign-in no longer emails a code: `POST /api/v1/auth/login` checks the email and password and returns the JWT right away. `/auth/verify-otp` is gone. Codes are still needed for sign-up, forgot password, and changing the password or email or deleting the account.
 - Wrong sign-in credentials answer 401 explicitly.
