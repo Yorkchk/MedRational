@@ -71,6 +71,7 @@ public interface StudyFileRepository extends JpaRepository<StudyFile, Long>, Jpa
     @org.springframework.data.jpa.repository.Query("SELECT f FROM StudyFile f ORDER BY f.uploadedAt DESC")
     Page<StudyFile> findAllFilesForNovelties(Pageable pageable);
 
+
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Modifying
     @Query("UPDATE StudyFile f SET f.previewStorageKey = :key WHERE f.id = :id")

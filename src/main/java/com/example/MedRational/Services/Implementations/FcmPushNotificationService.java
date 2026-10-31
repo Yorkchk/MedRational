@@ -16,9 +16,6 @@ import java.util.Map;
 @Slf4j
 public class FcmPushNotificationService implements PushNotificationService {
 
-    // Must match the channel the Android app creates
-    static final String ANDROID_CHANNEL_ID = "workshop_reminders";
-
     private final FirebaseMessaging messaging;
 
     public FcmPushNotificationService(FirebaseMessaging messaging) {
@@ -46,7 +43,7 @@ public class FcmPushNotificationService implements PushNotificationService {
                         .setPriority(AndroidConfig.Priority.HIGH)
                         // The app translates the text from these keys, in the language the user picked
                         .setNotification(AndroidNotification.builder()
-                                .setChannelId(ANDROID_CHANNEL_ID)
+                                .setChannelId(push.channelId())
                                 .setTitleLocalizationKey(push.titleLocalizationKey())
                                 .addAllTitleLocalizationArgs(push.localizationArgs())
                                 .setBodyLocalizationKey(push.bodyLocalizationKey())
