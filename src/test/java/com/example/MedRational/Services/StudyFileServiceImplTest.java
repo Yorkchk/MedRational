@@ -1,5 +1,6 @@
 package com.example.MedRational.Services;
 
+import com.example.MedRational.DTOs.UpdateStudyFileRequestDTO;
 import com.example.MedRational.Entities.Category;
 import com.example.MedRational.Entities.Reasoning;
 import com.example.MedRational.Entities.StudyFile;
@@ -13,6 +14,7 @@ import com.example.MedRational.Services.Interfaces.NewFilesNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.util.List;
@@ -21,6 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -108,5 +111,59 @@ class StudyFileServiceImplTest {
 
         assertEquals(List.of("Week 3 slides", "Week 3 slides"),
                 announced().stream().map(StudyFile::getDescription).toList());
+    }
+
+    private StudyFile givenStoredFile(String fileName, String description) {
+        StudyFile file = StudyFile.builder().id(9L).fileName(fileName).description(description).build();
+        when(studyFileRepository.findById(9L)).thenReturn(Optional.of(file));
+        return file;
+    }
+
+    @Test
+    void renamingKeepsTheExtension() {
+        StudyFile file = givenStoredFile("scan_001.pdf", "Week 3 slides");
+
+        service.updateFile(9L, new UpdateStudyFileRequestDTO("  ECG basics ", "  Lead placement  "));
+
+        assertEquals("ECG basics.pdf", file.getFileName());
+        assertEquals("Lead placement", file.getDescription());
+        verify(studyFileRepository).save(file);
+    }
+
+    // Typing the extension doesn't double it
+    @Test
+    void titleWithTheExtensionIsNotDoubled() {
+        StudyFile file = givenStoredFile("scan.PDF", null);
+
+        service.updateFile(9L, new UpdateStudyFileRequestDTO("ECG.pdf", null));
+
+        assertEquals("ECG.pdf", file.getFileName());
+    }
+
+    // A slash would make a folder in zips and break the download header
+    @Test
+    void slashesAreReplaced() {
+        StudyFile file = givenStoredFile("scan.pdf", null);
+
+        service.updateFile(9L, new UpdateStudyFileRequestDTO("ECG/Holter\\2024", null));
+
+        assertEquals("ECG_Holter_2024.pdf", file.getFileName());
+    }
+
+    @Test
+    void blankDescriptionClearsIt() {
+        StudyFile file = givenStoredFile("scan.pdf", "Week 3 slides");
+
+        service.updateFile(9L, new UpdateStudyFileRequestDTO("ECG", "   "));
+
+        assertNull(file.getDescription());
+    }
+
+    @Test
+    void unknownFileIsNotFound() {
+        when(studyFileRepository.findById(404L)).thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class,
+                () -> service.updateFile(404L, new UpdateStudyFileRequestDTO("ECG", null)));
     }
 }

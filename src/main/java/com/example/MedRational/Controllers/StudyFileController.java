@@ -3,6 +3,7 @@ package com.example.MedRational.Controllers;
 import com.example.MedRational.DTOs.FileSearchFilterDTO;
 import com.example.MedRational.DTOs.StudyFileResponse;
 import com.example.MedRational.DTOs.StudyFileResponseDTO;
+import com.example.MedRational.DTOs.UpdateStudyFileRequestDTO;
 import com.example.MedRational.DTOs.DownloadableFile;
 import com.example.MedRational.Security.CurrentUserGuard;
 import com.example.MedRational.Services.Interfaces.FileViewService;
@@ -12,6 +13,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -90,6 +92,15 @@ public class StudyFileController {
     ) throws IOException {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(studyFileService.uploadMultipleFilesToReasoning(reasoningId, files, description));
+    }
+
+    // Admin Only: Rename a file (its extension is kept) and change its description
+    @PutMapping("/{id}")
+    public ResponseEntity<StudyFileResponse> updateFile(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateStudyFileRequestDTO request
+    ) {
+        return ResponseEntity.ok(studyFileService.updateFile(id, request));
     }
 
     // Admin Only: Delete file by ID (removes from R2 and PostgreSQL)

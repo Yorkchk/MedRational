@@ -2,6 +2,7 @@ package com.example.MedRational.Services.Implementations;
 
 import com.example.MedRational.Preview.PreviewKind;
 import com.example.MedRational.DTOs.StudyFileResponse;
+import com.example.MedRational.DTOs.UpdateStudyFileRequestDTO;
 import com.example.MedRational.Entities.Reasoning;
 import com.example.MedRational.Entities.StudyFile;
 import com.example.MedRational.Repositories.FileRatingRepository;
@@ -74,7 +75,7 @@ public class StudyFileServiceImpl implements StudyFileService {
                 .fileName(file.getOriginalFilename())
                 .fileType(file.getContentType())
                 .fileSizeBytes(file.getSize())
-                .description(description == null || description.isBlank() ? null : description.trim())
+                .description(normalizeDescription(description))
                 .storageKey(storageKey)
                 .publicUrl(publicUrl)
                 .reasoning(reasoning)
@@ -88,6 +89,31 @@ public class StudyFileServiceImpl implements StudyFileService {
         return studyFileRepository.findByReasoningId(reasoningId).stream()
                 .map(mappingService::toStudyFileResponse)
                 .collect(Collectors.toList());
+    }
+
+    // The stored object stays as it is; only the name students see and the description change
+    @Transactional
+    public StudyFileResponse updateFile(Long fileId, UpdateStudyFileRequestDTO request) {
+        StudyFile file = studyFileRepository.findById(fileId)
+                .orElseThrow(() -> new EntityNotFoundException("File not found with ID: " + fileId));
+
+        file.setFileName(renamedKeepingExtension(file.getFileName(), request.getTitle()));
+        file.setDescription(normalizeDescription(request.getDescription()));
+        return mappingService.toStudyFileResponse(studyFileRepository.save(file));
+    }
+
+    // Previews and downloads read the type from the extension, so it's kept. Slashes would make
+    // folders in zips and break the download header
+    private static String renamedKeepingExtension(String currentName, String title) {
+        String name = title.trim().replace('/', '_').replace('\\', '_');
+        int dot = currentName == null ? -1 : currentName.lastIndexOf('.');
+        if (dot <= 0) return name;
+        String extension = currentName.substring(dot);
+        return name.toLowerCase().endsWith(extension.toLowerCase()) ? name : name + extension;
+    }
+
+    private static String normalizeDescription(String description) {
+        return description == null || description.isBlank() ? null : description.trim();
     }
 
     @Transactional

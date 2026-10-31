@@ -61,6 +61,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/files/*/ratings").authenticated()
 
                         .requestMatchers(HttpMethod.POST, "/api/v1/files/**").hasAuthority("ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/files/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/files/**").hasAuthority("ROLE_ADMIN")
 
                         // Statistics and other admin tools
