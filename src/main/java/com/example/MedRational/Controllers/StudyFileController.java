@@ -74,20 +74,22 @@ public class StudyFileController {
     @PostMapping(value = "/upload/{reasoningId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<StudyFileResponse> uploadSingleFile(
             @PathVariable Long reasoningId,
-            @RequestParam("file") MultipartFile file
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "description", required = false) String description
     ) throws IOException {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(studyFileService.uploadFileToReasoning(reasoningId, file));
+                .body(studyFileService.uploadFileToReasoning(reasoningId, file, description));
     }
 
     // Admin Only: Upload multiple files in a single request
     @PostMapping(value = "/upload-batch/{reasoningId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<List<StudyFileResponse>> uploadMultipleFiles(
             @PathVariable Long reasoningId,
-            @RequestParam("files") List<MultipartFile> files
+            @RequestParam("files") List<MultipartFile> files,
+            @RequestParam(value = "description", required = false) String description
     ) throws IOException {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(studyFileService.uploadMultipleFilesToReasoning(reasoningId, files));
+                .body(studyFileService.uploadMultipleFilesToReasoning(reasoningId, files, description));
     }
 
     // Admin Only: Delete file by ID (removes from R2 and PostgreSQL)

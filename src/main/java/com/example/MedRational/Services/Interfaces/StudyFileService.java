@@ -12,9 +12,9 @@ import java.util.List;
 
 public interface StudyFileService {
 
-    StudyFileResponse uploadFileToReasoning(Long reasoningId, MultipartFile file) throws IOException;
+    StudyFileResponse uploadFileToReasoning(Long reasoningId, MultipartFile file, String description) throws IOException;
 
-    List<StudyFileResponse> uploadMultipleFilesToReasoning(Long reasoningId, List<MultipartFile> files) throws IOException;
+    List<StudyFileResponse> uploadMultipleFilesToReasoning(Long reasoningId, List<MultipartFile> files, String description) throws IOException;
 
     List<StudyFileResponse> getFilesByReasoning(Long reasoningId);
 

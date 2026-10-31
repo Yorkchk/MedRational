@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -71,7 +72,7 @@ class StudyFileServiceImplTest {
     // Students hear about it right away, not after a delay
     @Test
     void uploadIsAnnouncedRightAway() throws Exception {
-        service.uploadFileToReasoning(7L, pdf("ECG.pdf"));
+        service.uploadFileToReasoning(7L, pdf("ECG.pdf"), null);
 
         List<StudyFile> files = announced();
         assertEquals(1, files.size());
@@ -81,8 +82,31 @@ class StudyFileServiceImplTest {
     // One push for the batch, not one per file
     @Test
     void batchUploadIsAnnouncedOnce() throws Exception {
-        service.uploadMultipleFilesToReasoning(7L, List.of(pdf("a.pdf"), pdf("b.pdf"), pdf("c.pdf")));
+        service.uploadMultipleFilesToReasoning(7L, List.of(pdf("a.pdf"), pdf("b.pdf"), pdf("c.pdf")), null);
 
         assertEquals(List.of("a.pdf", "b.pdf", "c.pdf"), announced().stream().map(StudyFile::getFileName).toList());
+    }
+
+    @Test
+    void uploadKeepsTheTrimmedDescription() throws Exception {
+        service.uploadFileToReasoning(7L, pdf("ECG.pdf"), "  Normal sinus rhythm  ");
+
+        assertEquals("Normal sinus rhythm", announced().get(0).getDescription());
+    }
+
+    @Test
+    void blankDescriptionIsSavedAsNull() throws Exception {
+        service.uploadFileToReasoning(7L, pdf("ECG.pdf"), "   ");
+
+        assertNull(announced().get(0).getDescription());
+    }
+
+    // Like the hashtags, one description goes on every file of the batch
+    @Test
+    void batchUploadPutsTheDescriptionOnEveryFile() throws Exception {
+        service.uploadMultipleFilesToReasoning(7L, List.of(pdf("a.pdf"), pdf("b.pdf")), "Week 3 slides");
+
+        assertEquals(List.of("Week 3 slides", "Week 3 slides"),
+                announced().stream().map(StudyFile::getDescription).toList());
     }
 }

@@ -40,24 +40,24 @@ public class StudyFileServiceImpl implements StudyFileService {
     private final NewFilesNotificationService newFilesNotificationService;
 
     @Transactional
-    public StudyFileResponse uploadFileToReasoning(Long reasoningId, MultipartFile file) throws IOException {
-        StudyFile saved = store(reasoningId, file);
+    public StudyFileResponse uploadFileToReasoning(Long reasoningId, MultipartFile file, String description) throws IOException {
+        StudyFile saved = store(reasoningId, file, description);
         newFilesNotificationService.announce(List.of(saved));
         return mappingService.toStudyFileResponse(saved);
     }
 
-    // One push for the whole batch, not one per file
+    // One push for the whole batch, not one per file. The description goes on every file
     @Transactional
-    public List<StudyFileResponse> uploadMultipleFilesToReasoning(Long reasoningId, List<MultipartFile> files) throws IOException {
+    public List<StudyFileResponse> uploadMultipleFilesToReasoning(Long reasoningId, List<MultipartFile> files, String description) throws IOException {
         List<StudyFile> saved = new ArrayList<>();
         for (MultipartFile file : files) {
-            saved.add(store(reasoningId, file));
+            saved.add(store(reasoningId, file, description));
         }
         newFilesNotificationService.announce(saved);
         return saved.stream().map(mappingService::toStudyFileResponse).collect(Collectors.toList());
     }
 
-    private StudyFile store(Long reasoningId, MultipartFile file) throws IOException {
+    private StudyFile store(Long reasoningId, MultipartFile file, String description) throws IOException {
         Reasoning reasoning = reasoningRepository.findById(reasoningId)
                 .orElseThrow(() -> new EntityNotFoundException("Reasoning not found with ID: " + reasoningId));
 
@@ -74,6 +74,7 @@ public class StudyFileServiceImpl implements StudyFileService {
                 .fileName(file.getOriginalFilename())
                 .fileType(file.getContentType())
                 .fileSizeBytes(file.getSize())
+                .description(description == null || description.isBlank() ? null : description.trim())
                 .storageKey(storageKey)
                 .publicUrl(publicUrl)
                 .reasoning(reasoning)
