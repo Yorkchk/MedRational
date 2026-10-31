@@ -48,6 +48,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Rating stats are read with typed queries instead of an `Object[]` cast that could throw `ClassCastException`.
 
 ### Changed
+- Reasoning and category zip downloads only contain the study files: the `summary.md` in each reasoning folder is gone.
 - Analytics file items send `null` instead of `"Unassigned"` when a file has no reasoning or category.
 - Sign-in no longer emails a code: `POST /api/v1/auth/login` checks the email and password and returns the JWT right away. `/auth/verify-otp` is gone. Codes are still needed for sign-up, forgot password, and changing the password or email or deleting the account.
 - Wrong sign-in credentials answer 401 explicitly.

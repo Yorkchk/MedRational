@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -59,7 +58,7 @@ public class ExportDownloadServiceImpl implements ExportDownloadService {
         return new DownloadableFile("selected_files.zip", "application/zip", new ByteArrayResource(baos.toByteArray()));
     }
 
-    // 3. Download an entire Reasoning (Notes markdown/text + attached media)
+    // 3. Download an entire Reasoning (its attached files)
     @Transactional(readOnly = true)
     public DownloadableFile downloadReasoningAsZip(Long reasoningId) throws IOException {
         Reasoning reasoning = reasoningRepository.findByIdWithFiles(reasoningId)
@@ -67,13 +66,6 @@ public class ExportDownloadServiceImpl implements ExportDownloadService {
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (ZipOutputStream zos = new ZipOutputStream(baos)) {
-            // Write Summary / Notes file
-            String content = "# " + reasoning.getTitle() + "\n\n" + (reasoning.getContent() != null ? reasoning.getContent() : "");
-            ZipEntry notesEntry = new ZipEntry("summary.md");
-            zos.putNextEntry(notesEntry);
-            zos.write(content.getBytes(StandardCharsets.UTF_8));
-            zos.closeEntry();
-
             // Write attached files
             for (StudyFile file : reasoning.getFiles()) {
                 byte[] data = r2StorageService.downloadFileBytes(file.getStorageKey());
@@ -124,13 +116,6 @@ public class ExportDownloadServiceImpl implements ExportDownloadService {
 
         for (Reasoning reasoning : reasonings) {
             String folder = rootPrefix + sanitizeFilename(reasoning.getTitle()) + "/";
-
-            // Add summary notes
-            String content = "# " + reasoning.getTitle() + "\n\n" + (reasoning.getContent() != null ? reasoning.getContent() : "");
-            ZipEntry notesEntry = new ZipEntry(folder + "summary.md");
-            zos.putNextEntry(notesEntry);
-            zos.write(content.getBytes(StandardCharsets.UTF_8));
-            zos.closeEntry();
 
             // Add files
             for (StudyFile file : reasoning.getFiles()) {
