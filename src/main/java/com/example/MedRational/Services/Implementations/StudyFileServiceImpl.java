@@ -58,6 +58,8 @@ public class StudyFileServiceImpl implements StudyFileService {
                 .storageKey(storageKey)
                 .publicUrl(publicUrl)
                 .reasoning(reasoning)
+                // Announced later, grouped with the uploads around it (NewFilesNotificationServiceImpl)
+                .pushPending(true)
                 .build();
 
         return mappingService.toStudyFileResponse(studyFileRepository.save(studyFile));

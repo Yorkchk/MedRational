@@ -139,6 +139,21 @@ class WorkshopNotificationServiceImplTest {
         assertTrue(json.contains("\"title\":\"Spots Available Now: Suturing\""), json);
     }
 
+    // Each kind of push shows on its own Android channel, so users can mute one and keep the other
+    @Test
+    void fcmMessageNamesThePushChannel() throws IOException {
+        PushMessage workshop = new PushMessage("Title", "Body", "push_opened_fcfs", List.of("Suturing"));
+        PushMessage files = new PushMessage("Title", "Body", "push_new_files", List.of("3"), PushMessage.NEW_FILES_CHANNEL);
+
+        String workshopJson = GsonFactory.getDefaultInstance()
+                .toString(FcmPushNotificationService.buildMessage("workshops", workshop, Map.of("projectId", "5")));
+        String filesJson = GsonFactory.getDefaultInstance()
+                .toString(FcmPushNotificationService.buildMessage("workshops", files, Map.of("type", "NEW_FILES")));
+
+        assertTrue(workshopJson.contains("\"channel_id\":\"workshop_reminders\""), workshopJson);
+        assertTrue(filesJson.contains("\"channel_id\":\"new_files\""), filesJson);
+    }
+
     // A push failure must not roll back the scheduler's status change
     @Test
     void fcmFailureIsLoggedNotThrown() throws Exception {
