@@ -71,15 +71,6 @@ public interface StudyFileRepository extends JpaRepository<StudyFile, Long>, Jpa
     @org.springframework.data.jpa.repository.Query("SELECT f FROM StudyFile f ORDER BY f.uploadedAt DESC")
     Page<StudyFile> findAllFilesForNovelties(Pageable pageable);
 
-    // Uploads not announced by push yet
-    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"reasoning"})
-    @Query("SELECT f FROM StudyFile f WHERE f.pushPending = true ORDER BY f.uploadedAt ASC")
-    List<StudyFile> findPendingPush();
-
-    // Only the files that were announced: one uploaded while the push was sent stays pending
-    @org.springframework.data.jpa.repository.Modifying
-    @Query("UPDATE StudyFile f SET f.pushPending = false WHERE f.id IN :ids")
-    int markPushSent(@Param("ids") List<Long> ids);
 
     @org.springframework.transaction.annotation.Transactional
     @org.springframework.data.jpa.repository.Modifying

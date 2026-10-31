@@ -5,72 +5,44 @@ import com.example.MedRational.Entities.Reasoning;
 import com.example.MedRational.Entities.StudyFile;
 import com.example.MedRational.Entities.enums.NotifType;
 import com.example.MedRational.Repositories.NotificationRepository;
-import com.example.MedRational.Repositories.StudyFileRepository;
 import com.example.MedRational.Services.Interfaces.NewFilesNotificationService;
 import com.example.MedRational.Services.Interfaces.PushMessage;
 import com.example.MedRational.Services.Interfaces.PushNotificationService;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 /**
- * The app uploads files one at a time, so pushing each upload would send one notification per file.
- * Uploads are marked pending instead, and announced together once the admin has stopped uploading.
+ * Pushes as soon as files are uploaded: one push per upload request, so a batch upload
+ * (/upload-batch) is announced once for all its files.
  */
 @Service
 public class NewFilesNotificationServiceImpl implements NewFilesNotificationService {
 
-    // Uploads this close together are announced in one push
-    static final Duration QUIET_PERIOD = Duration.ofMinutes(2);
-    // A long upload session is still announced, without waiting for its end
-    static final Duration MAX_WAIT = Duration.ofMinutes(15);
-
-    private final StudyFileRepository studyFileRepository;
     private final NotificationRepository notificationRepository;
     private final PushNotificationService pushNotificationService;
     // The topic every phone of this environment subscribes to, workshop pushes included
     private final String topic;
 
-    public NewFilesNotificationServiceImpl(StudyFileRepository studyFileRepository,
-                                           NotificationRepository notificationRepository,
+    public NewFilesNotificationServiceImpl(NotificationRepository notificationRepository,
                                            PushNotificationService pushNotificationService,
                                            @Value("${push.workshops-topic}") String topic) {
-        this.studyFileRepository = studyFileRepository;
         this.notificationRepository = notificationRepository;
         this.pushNotificationService = pushNotificationService;
         this.topic = topic;
     }
 
-    // Second 30, so it doesn't run together with the workshop scheduler at second 0
-    @Scheduled(cron = "30 * * * * *")
-    @Transactional
-    public void announcePendingUploads() {
-        announcePendingUploads(LocalDateTime.now());
-    }
-
     @Override
     @Transactional
-    public void announcePendingUploads(LocalDateTime now) {
-        // Oldest first
-        List<StudyFile> pending = studyFileRepository.findPendingPush();
-        if (pending.isEmpty()) {
-            return;
-        }
-        LocalDateTime oldest = pending.get(0).getUploadedAt();
-        LocalDateTime newest = pending.get(pending.size() - 1).getUploadedAt();
-        boolean stillUploading = newest.isAfter(now.minus(QUIET_PERIOD));
-        boolean waitedLongEnough = !oldest.isAfter(now.minus(MAX_WAIT));
-        if (stillUploading && !waitedLongEnough) {
+    public void announce(List<StudyFile> files) {
+        if (files.isEmpty()) {
             return;
         }
 
-        Announcement announcement = announcementFor(pending);
+        Announcement announcement = announcementFor(files);
         notificationRepository.save(Notification.builder()
                 .user(null) // null = global broadcast
                 .title(announcement.push().title())
@@ -79,8 +51,8 @@ public class NewFilesNotificationServiceImpl implements NewFilesNotificationServ
                 .targetId(announcement.fileId())
                 .isRead(false)
                 .build());
+        // Never throws (PushNotificationService), so a failed push can't fail the upload
         pushNotificationService.sendToTopic(topic, announcement.push(), announcement.data());
-        studyFileRepository.markPushSent(pending.stream().map(StudyFile::getId).toList());
     }
 
     /**

@@ -64,11 +64,6 @@ public class StudyFile {
     @JsonBackReference
     private Reasoning reasoning;
 
-    // True until the upload has been announced by push. Null on files from before pushes existed,
-    // so they're never announced
-    @Column(name = "push_pending")
-    private Boolean pushPending;
-
     @CreationTimestamp
     @Column(name = "uploaded_at", nullable = false, updatable = false)
     private LocalDateTime uploadedAt;

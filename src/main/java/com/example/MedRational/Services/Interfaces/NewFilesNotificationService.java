@@ -1,10 +1,12 @@
 package com.example.MedRational.Services.Interfaces;
 
-import java.time.LocalDateTime;
+import com.example.MedRational.Entities.StudyFile;
 
-/** Tells students about new study files, one push per batch of uploads. */
+import java.util.List;
+
+/** Tells students about new study files, one push per upload request. */
 public interface NewFilesNotificationService {
 
-    /** Announces the pending uploads once the admin has stopped uploading, as of {@code now}. */
-    void announcePendingUploads(LocalDateTime now);
+    /** Announces files that were just uploaded together; nothing when the list is empty. */
+    void announce(List<StudyFile> files);
 }

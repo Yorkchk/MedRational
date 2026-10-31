@@ -7,6 +7,7 @@ import com.example.MedRational.Entities.StudyFile;
 import com.example.MedRational.Repositories.FileRatingRepository;
 import com.example.MedRational.Repositories.ReasoningRepository;
 import com.example.MedRational.Repositories.StudyFileRepository;
+import com.example.MedRational.Services.Interfaces.NewFilesNotificationService;
 import com.example.MedRational.Services.Interfaces.StudyFileService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -36,9 +37,27 @@ public class StudyFileServiceImpl implements StudyFileService {
     private final R2StorageServiceImpl r2StorageService;
     private final MappingServiceImpl mappingService;
     private final FileRatingRepository fileRatingRepository;
+    private final NewFilesNotificationService newFilesNotificationService;
 
     @Transactional
     public StudyFileResponse uploadFileToReasoning(Long reasoningId, MultipartFile file) throws IOException {
+        StudyFile saved = store(reasoningId, file);
+        newFilesNotificationService.announce(List.of(saved));
+        return mappingService.toStudyFileResponse(saved);
+    }
+
+    // One push for the whole batch, not one per file
+    @Transactional
+    public List<StudyFileResponse> uploadMultipleFilesToReasoning(Long reasoningId, List<MultipartFile> files) throws IOException {
+        List<StudyFile> saved = new ArrayList<>();
+        for (MultipartFile file : files) {
+            saved.add(store(reasoningId, file));
+        }
+        newFilesNotificationService.announce(saved);
+        return saved.stream().map(mappingService::toStudyFileResponse).collect(Collectors.toList());
+    }
+
+    private StudyFile store(Long reasoningId, MultipartFile file) throws IOException {
         Reasoning reasoning = reasoningRepository.findById(reasoningId)
                 .orElseThrow(() -> new EntityNotFoundException("Reasoning not found with ID: " + reasoningId));
 
@@ -58,20 +77,9 @@ public class StudyFileServiceImpl implements StudyFileService {
                 .storageKey(storageKey)
                 .publicUrl(publicUrl)
                 .reasoning(reasoning)
-                // Announced later, grouped with the uploads around it (NewFilesNotificationServiceImpl)
-                .pushPending(true)
                 .build();
 
-        return mappingService.toStudyFileResponse(studyFileRepository.save(studyFile));
-    }
-
-    @Transactional
-    public List<StudyFileResponse> uploadMultipleFilesToReasoning(Long reasoningId, List<MultipartFile> files) throws IOException {
-        List<StudyFileResponse> responses = new ArrayList<>();
-        for (MultipartFile file : files) {
-            responses.add(uploadFileToReasoning(reasoningId, file));
-        }
-        return responses;
+        return studyFileRepository.save(studyFile);
     }
 
     @Transactional(readOnly = true)

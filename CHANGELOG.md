@@ -6,7 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
-- A push notification tells students about new study files. Uploads made close together are announced in one push ("3 new files in Heart Failure"), sent once the admin has stopped uploading for 2 minutes. They show on their own Android channel (`new_files`), and are stored as `NEW_FILES` notifications.
+- A push notification tells students about new study files. It is sent as soon as a file is uploaded, and a batch upload sends one push for all its files ("3 new files in Heart Failure"). They show on their own Android channel (`new_files`), and are stored as `NEW_FILES` notifications.
 - Staying signed in: sign-in returns a refresh token next to the JWT, and `POST /api/v1/auth/refresh` trades it for a new pair, so the app only asks to sign in again after 60 days without use. `POST /api/v1/auth/logout` ends a device's session.
   - Sessions are stored one row per device (`user_sessions`, token hashes only) and end on sign-out, password change or reset, email change and account deletion.
   - The JWT now lasts 1 hour instead of 24.
