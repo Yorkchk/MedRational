@@ -1,0 +1,38 @@
+# The MedRational API behind Caddy (HTTPS). The same file runs on the prod and uat servers; only the
+# server's .env (APP_ENV, DOMAIN, IMAGE_TAG, see .env.example) and its .env.<APP_ENV> secrets differ.
+# The image is the one publish-image.yml pushes to GHCR, so nothing is built on the server.
+#
+#   docker compose config --quiet        # check the file and the .env
+#   docker compose pull && docker compose up -d --remove-orphans
+name: medrational
+
+services:
+  api:
+    image: ghcr.io/yorkchk/medrational:${IMAGE_TAG:?set IMAGE_TAG in .env (sha-<full commit hash>)}
+    env_file: .env.${APP_ENV:?set APP_ENV in .env (prod or uat)}
+    environment:
+      SPRING_PROFILES_ACTIVE: ${APP_ENV}
+      FIREBASE_CREDENTIALS: /run/secrets/firebase.json   # overrides the laptop path in .env.<APP_ENV>
+    volumes:
+      - ./firebase-service-account.json:/run/secrets/firebase.json:ro
+    expose: ["8080"]   # reached only by Caddy, never published on the server
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    depends_on: [api]
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env (api.swisra.app or uat.swisra.app)}
+    ports:
+      - "80:80"        # Let's Encrypt challenge and the redirect to HTTPS
+      - "443:443"
+      - "443:443/udp"  # HTTP/3; harmless if the firewall doesn't open UDP 443
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # certificates: keep it, or every new server asks Let's Encrypt again
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
