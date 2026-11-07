@@ -17,6 +17,14 @@ services:
       - ./firebase-service-account.json:/run/secrets/firebase.json:ro
     expose: ["8080"]   # reached only by Caddy, never published on the server
     restart: unless-stopped
+    # Liveness only, so a database outage doesn't mark the container unhealthy (the uptime monitor
+    # watches /actuator/health, which includes the database). start_period covers Spring + LibreOffice.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/liveness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
 
   caddy:
     image: caddy:2

@@ -6,6 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Public health endpoints (Spring Boot Actuator), showing only `{"status": …}`: `GET /actuator/health` includes the database and answers 503 when it is down (for the uptime monitor), and `/actuator/health/liveness` only says the app runs (for the Docker healthcheck). No other actuator endpoint is exposed.
 - Study files have an optional description: `POST /api/v1/files/upload/{reasoningId}` and `/upload-batch/{reasoningId}` take a `description` part (a batch puts it on every file), and `StudyFileResponse` returns it.
 - Admins can edit a study file with `PUT /api/v1/files/{id}` (`{title, description}`). The title replaces the name without its extension, which is kept, and a blank description clears it.
 - A push notification tells students about new study files. It is sent as soon as a file is uploaded, and a batch upload sends one push for all its files ("3 new files in Heart Failure"). They show on their own Android channel (`new_files`), and are stored as `NEW_FILES` notifications.

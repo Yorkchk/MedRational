@@ -24,7 +24,7 @@ RUN ./mvnw -B -q -DskipTests package \
 # ---- Runtime: JRE + LibreOffice for Office -> PDF previews (Preview/OfficeConverter) ----
 FROM eclipse-temurin:21-jre-noble
 
-# procps: JODConverter uses ps to manage the LibreOffice process.
+# procps: JODConverter uses ps to manage the LibreOffice process. curl: the compose healthcheck.
 # Carlito/Caladea match Calibri/Cambria metrics, so previews keep the documents' layout.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -36,6 +36,7 @@ RUN apt-get update \
         fonts-crosextra-carlito \
         fonts-crosextra-caladea \
         procps \
+        curl \
         tzdata \
     && rm -rf /var/lib/apt/lists/*
 
