@@ -6,9 +6,20 @@
 #   docker compose pull && docker compose up -d --remove-orphans
 name: medrational
 
+# Docker keeps whatever a container prints in a file that never shrinks by default, until the disk is
+# full. The local driver compresses and rotates it: at most 5 files of 10 MB per container, oldest
+# deleted first. docker compose logs still works. Applies to recreated containers only:
+#   docker compose up -d --force-recreate
+x-logging: &logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   api:
     image: ghcr.io/yorkchk/medrational:${IMAGE_TAG:?set IMAGE_TAG in .env (sha-<full commit hash>)}
+    logging: *logging
     env_file: .env.${APP_ENV:?set APP_ENV in .env (prod or uat)}
     environment:
       SPRING_PROFILES_ACTIVE: ${APP_ENV}
@@ -28,6 +39,7 @@ services:
 
   caddy:
     image: caddy:2
+    logging: *logging
     depends_on: [api]
     environment:
       DOMAIN: ${DOMAIN:?set DOMAIN in .env (api.swisra.app or uat.swisra.app)}
