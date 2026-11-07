@@ -1,0 +1,86 @@
+name: Backup database
+
+# Every night, dump the prod database and store it in a private R2 bucket, where a lifecycle rule
+# deletes dumps after 30 days. On the Supabase free plan this is the only backup we can download and
+# restore. Setup and restore steps: docs/database-backups.md.
+# Scheduled and manual runs only start from the version of this file on main.
+on:
+  schedule:
+    - cron: "0 2 * * *"   # 02:00 UTC (Morocco time), when nobody uses the app
+  workflow_dispatch:      # Actions → Backup database → Run workflow, e.g. before a risky deploy
+
+concurrency:
+  group: backup-db
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      PG_IMAGE: postgres:17   # the client must be at least the server's version (Supabase runs 17)
+      DUMP: prod.dump
+
+    steps:
+      # A missing value would fail later with a less clear error, so stop here instead
+      - name: Check secrets and variables
+        env:
+          PGURL: ${{ secrets.PROD_DATABASE_URL }}
+          R2_KEY_ID: ${{ secrets.R2_BACKUP_ACCESS_KEY_ID }}
+          R2_SECRET: ${{ secrets.R2_BACKUP_SECRET_ACCESS_KEY }}
+          ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          BUCKET: ${{ vars.R2_BACKUP_BUCKET }}
+        run: |
+          missing=0
+          need() { if [ -z "$1" ]; then echo "::error::Set $2 in Settings → Secrets and variables → Actions"; missing=1; fi; }
+          need "$PGURL" "the PROD_DATABASE_URL secret"
+          need "$R2_KEY_ID" "the R2_BACKUP_ACCESS_KEY_ID secret"
+          need "$R2_SECRET" "the R2_BACKUP_SECRET_ACCESS_KEY secret"
+          need "$ACCOUNT_ID" "the CLOUDFLARE_ACCOUNT_ID variable"
+          need "$BUCKET" "the R2_BACKUP_BUCKET variable"
+          exit $missing
+
+      # Every table and sequence in public, where all the app's tables live. Supabase's own schemas
+      # (auth, storage…) aren't used and would make restoring into another database fail. A table
+      # pattern instead of --schema=public leaves out CREATE SCHEMA public, which every database
+      # already has. Without owners and grants, the dump restores anywhere.
+      # PGURL is the session pooler (port 5432): the transaction pooler can't run pg_dump.
+      - name: Dump prod
+        env:
+          PGURL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/out" -e PGURL "$PG_IMAGE" \
+            pg_dump "$PGURL" --format=custom --table='public.*' --no-owner --no-privileges --file="/out/$DUMP"
+
+      # Never upload an empty or unreadable dump over a good night
+      - name: Check the dump
+        run: |
+          test -s "$DUMP" || { echo "::error::The dump is empty"; exit 1; }
+          tables=$(docker run --rm -v "$PWD:/out" "$PG_IMAGE" pg_restore --list "/out/$DUMP" | grep -c " TABLE public " || true)
+          if [ "$tables" -eq 0 ]; then echo "::error::The dump has no tables"; exit 1; fi
+          echo "TABLES=$tables" >> "$GITHUB_ENV"
+          echo "SIZE=$(du -h "$DUMP" | cut -f1)" >> "$GITHUB_ENV"
+
+      # The AWS CLI is preinstalled on the runner. Recent versions add checksums R2 may refuse,
+      # so they are only sent when required.
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_BACKUP_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_BACKUP_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          BUCKET: ${{ vars.R2_BACKUP_BUCKET }}
+        run: |
+          key="prod/medrational-prod-$(date -u +%Y-%m-%dT%H%MZ).dump"
+          aws s3 cp "$DUMP" "s3://$BUCKET/$key" --endpoint-url "https://$ACCOUNT_ID.r2.cloudflarestorage.com" --only-show-errors
+          {
+            echo "### Prod database backed up"
+            echo "- Object: \`$BUCKET/$key\`"
+            echo "- Size: $SIZE, $TABLES tables"
+            echo "- Restore: docs/database-backups.md"
+          } >> "$GITHUB_STEP_SUMMARY"
