@@ -4,8 +4,6 @@ import com.example.MedRational.DTOs.*;
 
 public interface AuthService {
 
-    String createAdmin(CreateAdminRequest request);
-
     // Email + password only: no code at sign-in
     AuthResponse login(LoginRequest request);
 

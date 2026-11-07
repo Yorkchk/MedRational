@@ -16,11 +16,8 @@ public class AuthController {
 
     private final AuthService authService;
 
-    // Manual / Bootstrap endpoint for creating admins
-    @PostMapping("/admin/create")
-    public ResponseEntity<String> createAdmin(@Valid @RequestBody CreateAdminRequest request) {
-        return ResponseEntity.ok(authService.createAdmin(request));
-    }
+    // There is no endpoint to create admins: everything under /api/v1/auth is public. Promote an
+    // existing account in the database instead: update users set role = 'ROLE_ADMIN' where email = '…';
 
     // -------------------------------------------------------------
     // Unified Login (Admins & Regular Users: Email + Password -> JWT, no code)

@@ -31,25 +31,6 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
     private final UserSessionService sessionService;
 
-    // --- Admin Endpoints ---
-    @Override
-    @Transactional
-    public String createAdmin(CreateAdminRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Admin with this email already exists.");
-        }
-
-        User admin = User.builder()
-                .email(request.getEmail())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .role(Role.ROLE_ADMIN)
-                .emailVerified(true)
-                .build();
-
-        userRepository.save(admin);
-        return "Admin account created successfully.";
-    }
-
     @Override
     @Transactional
     public AuthResponse login(LoginRequest request) {
