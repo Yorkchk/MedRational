@@ -58,6 +58,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Wrong sign-in credentials answer 401 explicitly.
 
 ### Security
+- `POST /api/v1/auth/admin/create` is removed. It was public, like everything under `/api/v1/auth`, so anyone could create an admin account. Admins are now promoted in the database (`update users set role = 'ROLE_ADMIN' where email = '…'`).
 - `/api/v1/admin/**` is admin only. Before this, any signed-in user could read the analytics.
 - `@EnableMethodSecurity` is on, so the existing `@PreAuthorize` admin checks on hashtags, suggestions and workshops are enforced. They used to be ignored.
 - The rating endpoints take the rater from the JWT; the `userId` request parameter, which let anyone rate as anyone, is gone.
