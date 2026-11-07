@@ -38,6 +38,8 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         // Public account deletion page (Google Play link); its API is under /api/v1/auth/**
                         .requestMatchers(HttpMethod.GET, "/delete-account", "/delete-account.html").permitAll()
+                        // Health for the Docker healthcheck and the uptime monitor (status only, no details)
+                        .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
 
                         // 2. Public read & download endpoints (Students / Guests)
                         .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()

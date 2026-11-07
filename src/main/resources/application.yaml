@@ -28,6 +28,24 @@ jwt:
   expiration: 3600000           # access token: 1 hour; the app renews it with its refresh token
   refresh-expiration-days: 60   # a device unused for this long has to sign in again
 
+# Only /actuator/health is exposed, and public (SecurityConfig), with no details, so it reveals nothing.
+# /actuator/health checks the database too: the uptime monitor calls it, and it answers 503 when Supabase
+# is down. /actuator/health/liveness only says the app runs: the Docker healthcheck uses it, so a
+# database outage doesn't mark the container unhealthy.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true   # /health/liveness and /health/readiness, off by default outside Kubernetes
+  health:
+    mail:
+      enabled: false    # an SMTP hiccup shouldn't report the API as down
+
 server:
   port: 8080
   address: 0.0.0.0   # Binds to all network interfaces so local devices can reach it
