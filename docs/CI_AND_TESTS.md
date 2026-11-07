@@ -528,6 +528,16 @@ The run's summary page shows the pushed tag and its `docker pull` command. The i
   Or make the package public in its **Package settings**; the image holds no secrets.
 - The build caches the Maven dependencies and LibreOffice layers in GitHub's Actions cache, so later builds are much faster than the first one.
 
+### Database backups
+
+`.github/workflows/backup-db.yml` isn't triggered by merges. It runs every night at 02:00 UTC, or by hand (Actions → **Backup database** → **Run workflow**):
+
+1. `pg_dump` (from the `postgres:17` image) dumps every table and sequence of the prod `public` schema, through the session pooler.
+2. The job fails if the dump is empty or has no tables, so a broken night never replaces anything.
+3. The dump goes to the private R2 bucket `medrational-backups` under `prod/`, where a lifecycle rule deletes it after 30 days. The run's summary shows the object name, size and table count.
+
+It needs the `PROD_DATABASE_URL`, `R2_BACKUP_ACCESS_KEY_ID` and `R2_BACKUP_SECRET_ACCESS_KEY` secrets and the `CLOUDFLARE_ACCOUNT_ID` and `R2_BACKUP_BUCKET` variables; a missing one fails the first step with its name. GitHub emails you when a scheduled run fails. Setup and restore steps: [`docs/database-backups.md`](database-backups.md).
+
 ---
 
 ## 9. Warnings from the first runs (to do)
