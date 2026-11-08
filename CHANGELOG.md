@@ -6,6 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Rate limits on sign-in and on every endpoint that sends or checks an emailed code (sign-up, forgot password, account deletion and the profile codes), per email or signed-in user and per client IP. Over a limit the API answers 429 with `Retry-After`, and the `/delete-account` page shows "Too many attempts". Limits are set under `rate-limit` in `application.yaml`.
 - Nightly prod database backups: `.github/workflows/backup-db.yml` dumps the database at 02:00 UTC and stores it in the private R2 bucket `medrational-backups` for 30 days. Setup and restore steps are in `docs/database-backups.md`.
 - Public health endpoints (Spring Boot Actuator), showing only `{"status": …}`: `GET /actuator/health` includes the database and answers 503 when it is down (for the uptime monitor), and `/actuator/health/liveness` only says the app runs (for the Docker healthcheck). No other actuator endpoint is exposed.
 - Study files have an optional description: `POST /api/v1/files/upload/{reasoningId}` and `/upload-batch/{reasoningId}` take a `description` part (a batch puts it on every file), and `StudyFileResponse` returns it.

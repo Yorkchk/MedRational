@@ -6,7 +6,10 @@ import com.example.MedRational.DTOs.UpdateProfileRequestDTO;
 import com.example.MedRational.DTOs.UserProfileResponseDTO;
 import com.example.MedRational.Entities.Role;
 import com.example.MedRational.Entities.User;
+import com.example.MedRational.Exceptions.TooManyRequestsException;
 import com.example.MedRational.Security.CurrentUserGuard;
+import com.example.MedRational.Security.RateLimitedAction;
+import com.example.MedRational.Security.RateLimiter;
 import com.example.MedRational.Services.Interfaces.AccountDeletionService;
 import com.example.MedRational.Services.Interfaces.UserProfileService;
 import org.junit.jupiter.api.Test;
@@ -16,8 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,9 +31,35 @@ class UserProfileControllerTest {
     private final UserProfileService service = mock(UserProfileService.class);
     private final CurrentUserGuard guard = mock(CurrentUserGuard.class);
     private final AccountDeletionService accountDeletionService = mock(AccountDeletionService.class);
-    private final UserProfileController controller = new UserProfileController(service, guard, accountDeletionService);
+    private final RateLimiter rateLimiter = mock(RateLimiter.class);
+    private final UserProfileController controller =
+            new UserProfileController(service, guard, accountDeletionService, rateLimiter);
 
     private final User me = User.builder().id(1L).email("me@example.com").role(Role.ROLE_USER).build();
+
+    // Codes are counted per signed-in user, and a refused request never reaches the service
+    @Test
+    void codeEndpointsAreRateLimitedPerUser() {
+        when(guard.requireCurrentUser()).thenReturn(me);
+        ConfirmCodeRequestDTO code = new ConfirmCodeRequestDTO("123456");
+
+        controller.requestPasswordChangeCode();
+        controller.requestAccountDeletionCode();
+        controller.confirmEmailChange(code);
+        controller.deleteAccount(code);
+
+        verify(rateLimiter, times(2)).check(RateLimitedAction.SEND_CODE, "user:1");
+        verify(rateLimiter, times(2)).check(RateLimitedAction.VERIFY_CODE, "user:1");
+    }
+
+    @Test
+    void aRefusedCodeRequestSendsNothing() {
+        when(guard.requireCurrentUser()).thenReturn(me);
+        doThrow(new TooManyRequestsException(60)).when(rateLimiter).check(RateLimitedAction.SEND_CODE, "user:1");
+
+        assertThrows(TooManyRequestsException.class, controller::requestPasswordChangeCode);
+        verify(service, never()).requestPasswordChangeCode(any());
+    }
 
     @Test
     void profileIsTheSignedInUsers() {

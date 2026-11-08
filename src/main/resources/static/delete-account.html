@@ -147,6 +147,7 @@
       errCode: "Saisissez le code à 6 chiffres reçu par e-mail.",
       errSure: "Cochez la case pour confirmer.",
       errInvalid: "Code invalide ou expiré. Demandez un nouveau code.",
+      errTooMany: "Trop de tentatives. Réessayez dans quelques minutes.",
       errServer: "Une erreur est survenue (HTTP {status}). Réessayez plus tard.",
       errNetwork: "Impossible de joindre le serveur. Vérifiez votre connexion."
     },
@@ -172,6 +173,7 @@
       errCode: "Enter the 6-digit code you received by email.",
       errSure: "Tick the box to confirm.",
       errInvalid: "Invalid or expired code. Request a new code.",
+      errTooMany: "Too many attempts. Please try again in a few minutes.",
       errServer: "Something went wrong (HTTP {status}). Please try again later.",
       errNetwork: "Can't reach the server. Check your connection."
     }
@@ -226,6 +228,7 @@
   function failure(id, error, response) {
     if (!response) return show(id, "errNetwork");
     if (response.status === 400) return show(id, "errInvalid");
+    if (response.status === 429) return show(id, "errTooMany");
     show(id, "errServer", { status: response.status });
   }
 

@@ -7,7 +7,10 @@ import com.example.MedRational.DTOs.ConfirmCodeRequestDTO;
 import com.example.MedRational.DTOs.RequestEmailChangeDTO;
 import com.example.MedRational.DTOs.UpdateProfileRequestDTO;
 import com.example.MedRational.DTOs.UserProfileResponseDTO;
+import com.example.MedRational.Entities.User;
 import com.example.MedRational.Security.CurrentUserGuard;
+import com.example.MedRational.Security.RateLimitedAction;
+import com.example.MedRational.Security.RateLimiter;
 import com.example.MedRational.Services.Interfaces.AccountDeletionService;
 import com.example.MedRational.Services.Interfaces.UserProfileService;
 import jakarta.validation.Valid;
@@ -31,6 +34,7 @@ public class UserProfileController {
     private final UserProfileService userProfileService;
     private final CurrentUserGuard currentUserGuard;
     private final AccountDeletionService accountDeletionService;
+    private final RateLimiter rateLimiter;
 
     @GetMapping
     public ResponseEntity<UserProfileResponseDTO> getProfile() {
@@ -46,7 +50,7 @@ public class UserProfileController {
     // Emails a code to the current address
     @PostMapping("/password/code")
     public ResponseEntity<AuthMessageResponse> requestPasswordChangeCode() {
-        String message = userProfileService.requestPasswordChangeCode(currentUserGuard.requireCurrentUser());
+        String message = userProfileService.requestPasswordChangeCode(rateLimitedUser(RateLimitedAction.SEND_CODE));
         return ResponseEntity.ok(new AuthMessageResponse(message));
     }
 
@@ -54,33 +58,40 @@ public class UserProfileController {
     // only read that keep working
     @PutMapping("/password")
     public ResponseEntity<AuthResponse> changePassword(@Valid @RequestBody ChangePasswordRequestDTO request) {
-        return ResponseEntity.ok(userProfileService.changePassword(currentUserGuard.requireCurrentUser(), request));
+        return ResponseEntity.ok(userProfileService.changePassword(rateLimitedUser(RateLimitedAction.VERIFY_CODE), request));
     }
 
     // Emails a code to the new address
     @PostMapping("/email/code")
     public ResponseEntity<AuthMessageResponse> requestEmailChange(@Valid @RequestBody RequestEmailChangeDTO request) {
-        String message = userProfileService.requestEmailChange(currentUserGuard.requireCurrentUser(), request);
+        String message = userProfileService.requestEmailChange(rateLimitedUser(RateLimitedAction.SEND_CODE), request);
         return ResponseEntity.ok(new AuthMessageResponse(message));
     }
 
     // Returns a new token, because the old one is tied to the old email
     @PutMapping("/email")
     public ResponseEntity<AuthResponse> confirmEmailChange(@Valid @RequestBody ConfirmCodeRequestDTO request) {
-        return ResponseEntity.ok(userProfileService.confirmEmailChange(currentUserGuard.requireCurrentUser(), request));
+        return ResponseEntity.ok(userProfileService.confirmEmailChange(rateLimitedUser(RateLimitedAction.VERIFY_CODE), request));
     }
 
     // Emails a code to the current address before deleting the account
     @PostMapping("/delete/code")
     public ResponseEntity<AuthMessageResponse> requestAccountDeletionCode() {
-        String message = accountDeletionService.requestCode(currentUserGuard.requireCurrentUser());
+        String message = accountDeletionService.requestCode(rateLimitedUser(RateLimitedAction.SEND_CODE));
         return ResponseEntity.ok(new AuthMessageResponse(message));
     }
 
     // Deletes the account; the token stops working right after
     @DeleteMapping
     public ResponseEntity<Void> deleteAccount(@Valid @RequestBody ConfirmCodeRequestDTO request) {
-        accountDeletionService.deleteAccount(currentUserGuard.requireCurrentUser(), request.getCode());
+        accountDeletionService.deleteAccount(rateLimitedUser(RateLimitedAction.VERIFY_CODE), request.getCode());
         return ResponseEntity.noContent().build();
+    }
+
+    // The code endpoints count per signed-in user (the email may be about to change) and per IP
+    private User rateLimitedUser(RateLimitedAction action) {
+        User user = currentUserGuard.requireCurrentUser();
+        rateLimiter.check(action, "user:" + user.getId());
+        return user;
     }
 }
