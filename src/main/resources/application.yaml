@@ -49,6 +49,22 @@ management:
 server:
   port: 8080
   address: 0.0.0.0   # Binds to all network interfaces so local devices can reach it
+  # Behind Caddy, the client IP comes from X-Forwarded-For (the rate limits count per IP). Only
+  # Caddy can reach port 8080 (deploy/compose.yml), so clients can't fake the header.
+  forward-headers-strategy: native
+
+# Security/RateLimiter: per target (email or signed-in user) and per client IP. Over a limit, 429
+# with Retry-After. The IP limits are looser because students share campus Wi-Fi.
+rate-limit:
+  login:          # POST /auth/login: password guessing
+    target: { limit: 10, period: 15m }
+    ip: { limit: 60, period: 15m }
+  send-code:      # every endpoint that emails a code: flooding inboxes and the email quota
+    target: { limit: 5, period: 1h }
+    ip: { limit: 30, period: 1h }
+  verify-code:    # every endpoint that checks a 6-digit code: guessing it
+    target: { limit: 10, period: 15m }
+    ip: { limit: 60, period: 15m }
 
 preview:
   office-enabled: true                # false = don't start LibreOffice (tests); Office previews answer 503
