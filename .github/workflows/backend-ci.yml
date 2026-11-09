@@ -103,3 +103,16 @@ jobs:
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # The deployment scripts (deploy/): shellcheck, and the tests of what the GitHub deploy key can
+  # send to the servers, with the deploy and rollback steps run against a fake docker
+  deploy-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: shellcheck
+        run: shellcheck -x deploy/*.sh
+
+      - name: deploy.sh tests
+        run: bash deploy/test-deploy.sh

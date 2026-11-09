@@ -74,6 +74,8 @@ Layered packages under `com.example.MedRational` (note the capitalized package n
 
 After CI passes on `main`, `.github/workflows/publish-image.yml` builds the `Dockerfile` from that commit and pushes `ghcr.io/yorkchk/medrational:sha-<commit>` and `:latest`. Deploy by the `sha-` tag, so prod runs the image tested in uat. The workflow uses `workflow_run`, so it only runs from `main` and can't be tried on a PR.
 
+Deployment (`docs/deployment.md`): `deploy/setup-server.sh` hardens a fresh Ubuntu server once (as root) and installs `deploy/deploy.sh` as `/usr/local/bin/medrational-deploy`. `.github/workflows/deploy.yml` (manual **Deploy**, plus uat after each image when `UAT_AUTO_DEPLOY=true`) pipes that commit's `deploy/compose.yml` and `Caddyfile` with the tag over SSH to a key whose forced command is `medrational-deploy`, which accepts only `sha-<40 hex>`, never touches the secrets, waits for health and rolls back on failure. `deploy/test-deploy.sh` (run in Backend CI with shellcheck) tests it against a fake docker; update it when changing `deploy.sh`. Shell scripts are LF (`.gitattributes`).
+
 `.github/workflows/backup-db.yml` dumps the prod database every night at 02:00 UTC (and on demand) with `pg_dump` from `postgres:17` (every table and sequence in `public`, custom format, no owners or grants) and uploads it to the private R2 bucket `medrational-backups` under `prod/`, where a lifecycle rule keeps 30 days. It uses its own R2 token and the `PROD_DATABASE_URL` secret (session pooler), never the app's credentials. Setup and restore steps are in `docs/database-backups.md`. When the Supabase major version changes, update `PG_IMAGE` in the workflow and the restore commands.
 
 ## Testing policy

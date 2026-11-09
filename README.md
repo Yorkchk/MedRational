@@ -112,6 +112,7 @@ The test suite boots the full Spring context, so it needs a reachable PostgreSQL
 
 - [CI and tests](docs/CI_AND_TESTS.md): what runs on every pull request, what it checks, how to read failures, and how to add tests.
 - [GitHub repository setup guide](docs/GITHUB_REPO_SETUP.md): the branching, PR, CI, and release workflow this repo follows.
+- [Deployment](docs/deployment.md): setting up a server with `deploy/setup-server.sh`, and deploying to uat or prod with the **Deploy** workflow.
 
 ## License
 
