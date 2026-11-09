@@ -96,7 +96,7 @@ jobs:
             exit 1
           fi
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         if: steps.reach.outputs.up == 'true'
         with:
           registry: ghcr.io
