@@ -1,0 +1,172 @@
+name: Deploy
+
+# Deploys a published image to the uat or prod server: Actions → Deploy → Run workflow. It sends
+# that commit's deploy/compose.yml and Caddyfile with the tag over SSH, and the server's
+# medrational-deploy (deploy/deploy.sh) pulls, restarts, waits until healthy, and rolls back when
+# the new version doesn't start. Rolling back by hand is running it again with the previous tag.
+#
+# Setup (docs/deployment.md): GitHub environments uat and prod, each with the secrets DEPLOY_SSH_KEY
+# and DEPLOY_KNOWN_HOSTS and the variable DEPLOY_HOST. With the repository variable
+# UAT_AUTO_DEPLOY=true, every new image also goes to uat, when the uat server is up.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Server
+        type: choice
+        options: [uat, prod]
+        default: uat
+      tag:
+        description: Image tag (sha-<full commit>). Empty = the commit this runs from (main)
+        required: false
+        default: ''
+  workflow_run:
+    workflows: [Publish image]
+    types: [completed]
+    branches: [main]
+
+# One deploy per server at a time; a second one waits instead of cancelling the first
+concurrency:
+  group: deploy-${{ inputs.environment || 'uat' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  IMAGE: ghcr.io/yorkchk/medrational
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && vars.UAT_AUTO_DEPLOY == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: ${{ inputs.environment || 'uat' }}
+      url: https://${{ vars.DEPLOY_HOST }}/actuator/health
+    env:
+      TARGET: ${{ inputs.environment || 'uat' }}
+      AUTOMATIC: ${{ github.event_name == 'workflow_run' }}
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+
+    steps:
+      - name: Pick the image tag
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ "$TARGET" = prod ] && [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::Deploy to prod from main only (this run is on $GITHUB_REF)"
+            exit 1
+          fi
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "::error::Set the DEPLOY_HOST variable in the $TARGET environment (Settings → Environments)"
+            exit 1
+          fi
+          if [ -n "$INPUT_TAG" ]; then
+            tag=$INPUT_TAG
+          elif [ -n "$RUN_SHA" ]; then
+            tag=sha-$RUN_SHA
+          else
+            tag=sha-$GITHUB_SHA
+          fi
+          if ! printf '%s' "$tag" | grep -Eqx 'sha-[0-9a-f]{40}'; then
+            echo "::error::'$tag' isn't an image tag: use sha- plus the full commit hash, never latest"
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "sha=${tag#sha-}" >> "$GITHUB_OUTPUT"
+
+      # The uat server only exists while someone tests, so an automatic deploy to a deleted server
+      # just ends here with a notice. A deploy started by hand fails instead.
+      - name: Check the server is up
+        id: reach
+        run: |
+          if timeout 10 bash -c "exec 3<>/dev/tcp/$DEPLOY_HOST/22" 2> /dev/null; then
+            echo "up=true" >> "$GITHUB_OUTPUT"
+          elif [ "$AUTOMATIC" = true ]; then
+            echo "::notice::$DEPLOY_HOST doesn't answer on port 22 (no uat server right now), skipped"
+            echo "up=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::$DEPLOY_HOST doesn't answer on port 22. Is the server running, with the firewall open for SSH?"
+            exit 1
+          fi
+
+      - uses: docker/login-action@v3
+        if: steps.reach.outputs.up == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check the image exists
+        if: steps.reach.outputs.up == 'true'
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          if ! docker buildx imagetools inspect "$IMAGE:$TAG" > /dev/null; then
+            echo "::error::$IMAGE:$TAG doesn't exist. Wait for the Publish image run of that commit, or pick a tag from a green one."
+            exit 1
+          fi
+
+      # compose.yml and the Caddyfile from the same commit as the image
+      - uses: actions/checkout@v4
+        if: steps.reach.outputs.up == 'true'
+        with:
+          ref: ${{ steps.tag.outputs.sha }}
+          sparse-checkout: deploy
+
+      - name: SSH key
+        if: steps.reach.outputs.up == 'true'
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$DEPLOY_SSH_KEY" ]; then
+            echo "::error::Set the DEPLOY_SSH_KEY secret in the $TARGET environment"
+            exit 1
+          fi
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [ -n "$DEPLOY_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          elif [ "$TARGET" = prod ]; then
+            echo "::error::Set the DEPLOY_KNOWN_HOSTS secret in the prod environment (ssh-keyscan $DEPLOY_HOST)"
+            exit 1
+          else
+            # A uat server built without the snapshot has a new host key each time, so uat may
+            # trust what it finds
+            echo "::warning::No DEPLOY_KNOWN_HOSTS for uat: trusting the host key found now"
+            ssh-keyscan -T 10 "$DEPLOY_HOST" > ~/.ssh/known_hosts 2> /dev/null
+          fi
+
+      # The key's forced command on the server runs medrational-deploy with the tag, whatever is asked
+      - name: Deploy
+        if: steps.reach.outputs.up == 'true'
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          tar -C deploy -cf - compose.yml Caddyfile \
+            | ssh -i ~/.ssh/deploy_key \
+                -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+                -o ConnectTimeout=15 -o ServerAliveInterval=30 \
+                "deploy@$DEPLOY_HOST" "$TAG"
+
+      - name: Summary
+        if: always() && steps.reach.outputs.up == 'true'
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          OUTCOME: ${{ job.status }}
+        run: |
+          {
+            echo "### $TARGET: \`$TAG\` ($OUTCOME)"
+            echo
+            echo "Health: https://$DEPLOY_HOST/actuator/health"
+            echo
+            echo "To roll back, run **Deploy** again on $TARGET with the previous tag."
+          } >> "$GITHUB_STEP_SUMMARY"
