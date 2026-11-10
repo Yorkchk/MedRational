@@ -4,7 +4,10 @@
 spring:
   datasource:
     hikari:
-      maximum-pool-size: 5   # the Supabase pooler caps client connections
+      # Load tests (loadtest/RESULTS.md): with 5 connections requests queued from ~500 active
+      # students; 12 kept p95 at 155 ms with 800. Keep it a few below the project's pooler Pool Size
+      # (Supabase → Database → Settings), which caps client connections. DB_POOL_SIZE overrides it.
+      maximum-pool-size: ${DB_POOL_SIZE:12}
 
 cloudflare:
   r2:
