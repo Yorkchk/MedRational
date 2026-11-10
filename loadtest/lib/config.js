@@ -1,0 +1,75 @@
+// Settings shared by every load test, all from -e flags (or K6_* env vars), so no secret is in git.
+//   BASE_URL      the API, with no trailing slash (default: the local dev backend)
+//   LT_USERS      comma-separated emails of confirmed, non-admin test accounts on that server
+//   LT_PASSWORD   their shared password
+//   PROFILE       smoke | load | stress | spike | soak (default smoke)
+
+export const BASE_URL = (__ENV.BASE_URL || 'http://localhost:8080').replace(/\/+$/, '');
+
+export const USERS = (__ENV.LT_USERS || '')
+    .split(',')
+    .map((email) => email.trim())
+    .filter((email) => email.length > 0);
+
+export const PASSWORD = __ENV.LT_PASSWORD || '';
+
+// Refuses prod by name: the tests record views and downloads and would skew the real statistics.
+export function assertNotProd() {
+    if (/(^|\/\/)api\.swisra\.app/i.test(BASE_URL) && __ENV.I_KNOW_THIS_IS_PROD !== 'yes') {
+        throw new Error(`Refusing to load test prod (${BASE_URL}). Use uat.`);
+    }
+}
+
+// Each profile is one k6 scenario. Virtual users (VUs) are simulated students, each looping through
+// a browsing session with think time, so 150 VUs ≈ 150 students using the app at the same moment.
+const PROFILES = {
+    // Does the script work at all? Run it first, after every change to the script.
+    smoke: { executor: 'constant-vus', vus: 1, duration: '1m' },
+    // Exam-night estimate: about 10% of 7,544 students online at once, a request every few seconds.
+    load: {
+        executor: 'ramping-vus',
+        startVUs: 0,
+        stages: [
+            { duration: '3m', target: 150 },
+            { duration: '10m', target: 150 },
+            { duration: '2m', target: 0 },
+        ],
+    },
+    // Keeps adding students until something breaks: the step where thresholds fail is the ceiling.
+    stress: {
+        executor: 'ramping-vus',
+        startVUs: 0,
+        stages: [
+            { duration: '2m', target: 100 },
+            { duration: '3m', target: 100 },
+            { duration: '2m', target: 250 },
+            { duration: '3m', target: 250 },
+            { duration: '2m', target: 500 },
+            { duration: '3m', target: 500 },
+            { duration: '2m', target: 800 },
+            { duration: '3m', target: 800 },
+            { duration: '2m', target: 0 },
+        ],
+    },
+    // Everyone opens the app at once (e.g. a push about a new file or an exam announcement).
+    spike: {
+        executor: 'ramping-vus',
+        startVUs: 0,
+        stages: [
+            { duration: '30s', target: 500 },
+            { duration: '2m', target: 500 },
+            { duration: '30s', target: 0 },
+        ],
+    },
+    // Steady load for a long time: memory or DB-connection leaks show up as a slow drift.
+    soak: { executor: 'constant-vus', vus: 100, duration: '30m' },
+};
+
+export function scenarioFor(profile) {
+    const scenario = PROFILES[profile];
+    if (!scenario) {
+        throw new Error(`Unknown PROFILE '${profile}'. Use one of: ${Object.keys(PROFILES).join(', ')}`);
+    }
+    // Lets a session that is still running when the ramp goes down finish instead of being cut off
+    return scenario.executor === 'ramping-vus' ? { ...scenario, gracefulRampDown: '30s' } : scenario;
+}
