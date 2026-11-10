@@ -8,8 +8,9 @@
 // See loadtest/README.md for the profiles and what to watch on the server during a run.
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';
+import exec from 'k6/execution';
 import { Rate } from 'k6/metrics';
-import { assertNotProd, BASE_URL, scenarioFor } from './lib/config.js';
+import { assertNotProd, BASE_URL, BREAKPOINT_STEPS, breakpointStepAt, scenarioFor } from './lib/config.js';
 import { authParams, signInAll } from './lib/auth.js';
 
 const PROFILE = __ENV.PROFILE || 'smoke';
@@ -19,11 +20,27 @@ const DOWNLOAD_RATE = Number(__ENV.DOWNLOAD_RATE || 0.03);
 const PREVIEW_RATE = Number(__ENV.PREVIEW_RATE || 0.02);
 
 const failedChecks = new Rate('failed_checks');
+const BREAKPOINT = PROFILE === 'breakpoint';
+
+// Breakpoint: each step is judged on its own requests, and the first slow or failing step stops the
+// test (abortOnFail). The summary lists every step reached, with its p95, errors and request count
+// (requests/s = count / 50, the measured part of each 1-minute step). The last step that passed is the maximum.
+function breakpointThresholds() {
+    const thresholds = {};
+    for (const vus of BREAKPOINT_STEPS) {
+        const stop = { abortOnFail: true, delayAbortEval: '15s' };
+        thresholds[`http_req_duration{kind:api,step:${vus}}`] = [{ threshold: 'p(95)<500', ...stop }];
+        thresholds[`http_req_failed{step:${vus}}`] = [{ threshold: 'rate<0.01', ...stop }];
+        thresholds[`http_reqs{step:${vus}}`] = ['count>=0']; // never fails: only shows the count
+    }
+    return thresholds;
+}
 
 export const options = {
     scenarios: { students: scenarioFor(PROFILE) },
     // Downloads and previews are tagged apart (kind:file): a 5 MB PDF is slow for reasons browsing isn't.
     thresholds: {
+        ...(BREAKPOINT ? breakpointThresholds() : {}),
         'http_req_failed': ['rate<0.01'],
         'http_req_duration{kind:api}': ['p(95)<500', 'p(99)<1500'],
         'http_req_duration{kind:file}': ['p(95)<5000'],
@@ -51,9 +68,17 @@ function think(min, max) {
 }
 
 // GET as the app does, and records whether it answered 200
-function get(session, path, name, kind = 'api') {
-    const params = authParams(session, name);
+// Tags a request with its breakpoint step, so each step's thresholds only count its own requests
+function tag(params, kind) {
     params.tags.kind = kind;
+    if (BREAKPOINT) {
+        params.tags.step = breakpointStepAt(Date.now() - exec.scenario.startTime);
+    }
+    return params;
+}
+
+function get(session, path, name, kind = 'api') {
+    const params = tag(authParams(session, name), kind);
     if (kind === 'file') {
         params.responseType = 'none'; // count the bytes on the wire, don't keep them
     }
@@ -64,8 +89,7 @@ function get(session, path, name, kind = 'api') {
 }
 
 function post(session, path, name) {
-    const params = authParams(session, name);
-    params.tags.kind = 'api';
+    const params = tag(authParams(session, name), 'api');
     const res = http.post(`${BASE_URL}${path}`, null, params);
     const ok = check(res, { [`${name} is 2xx`]: (r) => r.status >= 200 && r.status < 300 });
     failedChecks.add(!ok);

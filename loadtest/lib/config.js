@@ -65,6 +65,44 @@ const PROFILES = {
     soak: { executor: 'constant-vus', vus: 100, duration: '30m' },
 };
 
+// Breakpoint: steps of more and more students, each held for HOLD_S and measured on its own, so
+// the step where it gets slow is the maximum. browse.js stops the test at the first failing step
+// (abortOnFail), so it takes at most about 11 minutes.
+export const BREAKPOINT_STEPS = (__ENV.STEPS || '400,800,1200,1600,2000,2400,3000')
+    .split(',')
+    .map((n) => Number(n.trim()))
+    .filter((n) => n > 0);
+const FIRST_RAMP_S = 60; // slower first ramp, so the JVM warms up before the first measurement
+const RAMP_S = 30;
+const HOLD_S = 60;
+// Not measured at the start of each hold: k6 judges thresholds as soon as a step has requests, and
+// a step must not stop the test on its first second
+const SETTLE_S = 10;
+export const BREAKPOINT_MEASURED_S = HOLD_S - SETTLE_S;
+
+PROFILES.breakpoint = {
+    executor: 'ramping-vus',
+    startVUs: 0,
+    stages: BREAKPOINT_STEPS.flatMap((vus, i) => [
+        { duration: `${i === 0 ? FIRST_RAMP_S : RAMP_S}s`, target: vus },
+        { duration: `${HOLD_S}s`, target: vus },
+    ]),
+};
+
+// The step a moment of the run belongs to: its student count while it is held, 'ramp' while
+// students are being added and during the first SETTLE_S of a hold (not measured)
+export function breakpointStepAt(elapsedMs) {
+    let end = 0;
+    for (let i = 0; i < BREAKPOINT_STEPS.length; i++) {
+        end += (i === 0 ? FIRST_RAMP_S : RAMP_S) * 1000;
+        if (elapsedMs < end) return 'ramp';
+        if (elapsedMs < end + SETTLE_S * 1000) return 'ramp';
+        end += HOLD_S * 1000;
+        if (elapsedMs < end) return String(BREAKPOINT_STEPS[i]);
+    }
+    return 'ramp';
+}
+
 export function scenarioFor(profile) {
     const scenario = PROFILES[profile];
     if (!scenario) {

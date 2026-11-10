@@ -49,12 +49,31 @@ docker run --rm -v "${PWD}/loadtest:/scripts" grafana/k6:1.0.0 run `
 | `stress` | 100 → 250 → 500 → 800 | 22 min | Where is the ceiling, and what gives out first? |
 | `spike` | 0 → 500 in 30 s | 3 min | Does a sudden rush (a push to everyone) recover on its own? |
 | `soak` | 100 for 30 min | 30 min | Does anything leak (memory, DB connections) over time? |
+| `breakpoint` | 400 → 800 → … → 3,000, 1 min each | ≤ 11 min | What is the maximum? Stops by itself at the first step that's too slow. |
 
 Other knobs: `-e DOWNLOAD_RATE=0.3` (share of sessions that download a file, default 0.03) and
 `-e PREVIEW_RATE=0.1` (default 0.02), to test a night when everyone downloads the same exam pack.
 Keep every run under 1 hour: the access tokens taken at the start expire then.
 
-Order: `smoke`, then `load`. Run `stress` only once `load` passes. Then `spike` and `soak`.
+Order: `smoke`, then `load`. Run `stress` only once `load` passes. Then `spike` and `soak`, and
+`breakpoint` to find the maximum.
+
+### Finding the maximum (`breakpoint`)
+
+It adds students in steps (400, 800, 1,200, 1,600, 2,000, 2,400, 3,000), holds each step for
+1 minute and judges it **only on that step's requests**, leaving out its first 10 seconds: p95 under 500 ms and under 1% errors.
+The first step that fails stops the test (k6 prints `thresholds ... have been crossed` and exits
+non-zero, which is expected here). The summary lists, for every step reached:
+
+- `http_req_duration{kind:api,step:N}`: its p95,
+- `http_req_failed{step:N}`: its error rate,
+- `http_reqs{step:N}`: its request count; divide by 50 (the measured seconds) for requests/s.
+
+**The maximum is the last step with ✓**, and the step with ✗ is where it breaks. To narrow it
+down, run again with your own steps, e.g. `-e STEPS=1600,1800,2000,2200`.
+
+Above about 1,500 students, watch your own PC too (Task Manager): if k6 uses most of its CPU, the
+laptop is the limit, not the API, and the run should move to a temporary Hetzner server.
 
 ### Where to run k6 from
 
