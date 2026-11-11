@@ -231,6 +231,7 @@ jobs:
       MAIL_PORT: 587
       MAIL_USERNAME: ci-dummy
       MAIL_PASSWORD: ci-dummy
+      MAIL_FROM: ci@example.com
 
     steps:
       - uses: actions/checkout@v4
@@ -437,7 +438,7 @@ $env:SUPABASE_DB_HOST='localhost'; $env:SUPABASE_DB_PORT='55432'
 $env:SUPABASE_DB_DATABASE='postgres'; $env:SUPABASE_DB_USERNAME='postgres'; $env:SUPABASE_DB_PASSWORD='postgres'
 $env:JWT_SECRET='ci-only-dummy-secret-that-is-at-least-32-bytes-long'
 $env:CLOUDFLARE_ACCOUNT_ID='ci-dummy'; $env:CLOUDFLARE_ACCESS_KEY_ID='ci-dummy'; $env:CLOUDFLARE_SECRET_ACCESS_KEY='ci-dummy'
-$env:MAIL_HOST='localhost'; $env:MAIL_PORT='587'; $env:MAIL_USERNAME='ci-dummy'; $env:MAIL_PASSWORD='ci-dummy'
+$env:MAIL_HOST='localhost'; $env:MAIL_PORT='587'; $env:MAIL_USERNAME='ci-dummy'; $env:MAIL_PASSWORD='ci-dummy'; $env:MAIL_FROM='ci@example.com'
 
 # 3. The exact CI command
 .\mvnw.cmd -B verify

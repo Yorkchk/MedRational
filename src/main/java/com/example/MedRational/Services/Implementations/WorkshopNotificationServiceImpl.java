@@ -28,15 +28,18 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
     private final PushNotificationService pushNotificationService;
     // "workshops" in prod, which the app subscribes to; dev and uat use their own topic
     private final String workshopsTopic;
+    private final String mailFrom;
 
     public WorkshopNotificationServiceImpl(NotificationRepository notificationRepository,
                                            JavaMailSender mailSender,
                                            PushNotificationService pushNotificationService,
-                                           @Value("${push.workshops-topic}") String workshopsTopic) {
+                                           @Value("${push.workshops-topic}") String workshopsTopic,
+                                           @Value("${mail.from}") String mailFrom) {
         this.notificationRepository = notificationRepository;
         this.mailSender = mailSender;
         this.pushNotificationService = pushNotificationService;
         this.workshopsTopic = workshopsTopic;
+        this.mailFrom = mailFrom;
     }
 
     // Announces a new project while it's still upcoming. The author just created it, so no email
@@ -158,6 +161,7 @@ public class WorkshopNotificationServiceImpl implements WorkshopNotificationServ
         if (author != null && author.getEmail() != null) {
             try {
                 SimpleMailMessage email = new SimpleMailMessage();
+                email.setFrom(mailFrom);
                 email.setTo(author.getEmail());
                 email.setSubject("[MedRational] " + subject);
                 email.setText(body);

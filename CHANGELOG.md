@@ -6,6 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Emails (sign-in codes and workshop alerts) go through Amazon SES instead of Gmail. The new required `MAIL_FROM` sets the sender, which must be an identity verified in SES. SMTP now requires STARTTLS and gives up after 10 seconds instead of hanging the request.
 - Deployment scripts: `deploy/setup-server.sh` prepares a fresh Ubuntu server once (deploy user, Docker, swap, firewall, fail2ban, automatic security updates, SSH without root or passwords), and the **Deploy** workflow puts an image tag live on uat or prod over SSH, waits until it's healthy and rolls back when it isn't. With `UAT_AUTO_DEPLOY=true`, each new image also goes to uat while the uat server is up. See `docs/deployment.md`.
 - Rate limits on sign-in and on every endpoint that sends or checks an emailed code (sign-up, forgot password, account deletion and the profile codes), per email or signed-in user and per client IP. Over a limit the API answers 429 with `Retry-After`, and the `/delete-account` page shows "Too many attempts". Limits are set under `rate-limit` in `application.yaml`.
 - Nightly prod database backups: `.github/workflows/backup-db.yml` dumps the database at 02:00 UTC and stores it in the private R2 bucket `medrational-backups` for 30 days. Setup and restore steps are in `docs/database-backups.md`.

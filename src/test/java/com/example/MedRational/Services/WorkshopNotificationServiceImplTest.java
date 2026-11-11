@@ -16,6 +16,7 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 
 import java.io.IOException;
@@ -38,13 +39,14 @@ class WorkshopNotificationServiceImplTest {
 
     private static final long PROJECT_ID = 5L;
     private static final String TOPIC = "workshops-uat";
+    private static final String FROM = "SWISRA <no-reply@example.com>";
 
     private final NotificationRepository notificationRepository = mock(NotificationRepository.class);
     private final JavaMailSender mailSender = mock(JavaMailSender.class);
     private final PushNotificationService push = mock(PushNotificationService.class);
 
     private final WorkshopNotificationServiceImpl service =
-            new WorkshopNotificationServiceImpl(notificationRepository, mailSender, push, TOPIC);
+            new WorkshopNotificationServiceImpl(notificationRepository, mailSender, push, TOPIC, FROM);
 
     private final WorkshopProject project = WorkshopProject.builder()
             .id(PROJECT_ID)
@@ -95,6 +97,17 @@ class WorkshopNotificationServiceImplTest {
     void openingReminderIsPushedToEveryone() {
         PushMessage message = assertPushed(service::notifyOpeningSoon, NotifType.WORKSHOP_REMINDER, "First-Come-First-Served Opening in 10 Min");
         assertEquals("push_opening_soon_fcfs", message.localizationKey());
+    }
+
+    // Amazon SES refuses a message without a verified sender, so the author's email must name one
+    @Test
+    void authorEmailIsSentFromTheConfiguredSender() {
+        service.notifyOpeningSoon(project);
+
+        ArgumentCaptor<SimpleMailMessage> email = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(email.capture());
+        assertEquals(FROM, email.getValue().getFrom());
+        assertEquals("admin@example.com", email.getValue().getTo()[0]);
     }
 
     @Test
@@ -170,7 +183,7 @@ class WorkshopNotificationServiceImplTest {
     void notificationsStillGoOutWhenPushIsDisabled() {
         PushNotificationService disabled = (topic, message, data) -> { };
         WorkshopNotificationServiceImpl withoutPush =
-                new WorkshopNotificationServiceImpl(notificationRepository, mailSender, disabled, TOPIC);
+                new WorkshopNotificationServiceImpl(notificationRepository, mailSender, disabled, TOPIC, FROM);
 
         withoutPush.notifyRegistrationOpened(project);
 

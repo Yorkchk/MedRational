@@ -46,6 +46,7 @@ jobs:
       MAIL_PORT: 587
       MAIL_USERNAME: ci-dummy
       MAIL_PASSWORD: ci-dummy
+      MAIL_FROM: ci@example.com
 
     steps:
       - uses: actions/checkout@v4
