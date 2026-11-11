@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Optional;
 
 @Repository
@@ -30,18 +31,10 @@ public interface FileRatingRepository extends JpaRepository<FileRating, Long> {
     @Query("SELECT AVG(r.score) FROM FileRating r")
     Double averageScore();
 
-    // file_ratings has no ON DELETE CASCADE, so these run before deleting files
+    // Before deleting files: file_id has no ON DELETE CASCADE (see StudyFileReferences)
     @Modifying
-    @Query("DELETE FROM FileRating r WHERE r.file.id = :fileId")
-    void deleteAllByFileId(@Param("fileId") Long fileId);
-
-    @Modifying
-    @Query("DELETE FROM FileRating r WHERE r.file.id IN (SELECT f.id FROM StudyFile f WHERE f.reasoning.id = :reasoningId)")
-    void deleteAllByReasoningId(@Param("reasoningId") Long reasoningId);
-
-    @Modifying
-    @Query("DELETE FROM FileRating r WHERE r.file.id IN (SELECT f.id FROM StudyFile f WHERE f.reasoning.category.id = :categoryId)")
-    void deleteAllByCategoryId(@Param("categoryId") Long categoryId);
+    @Query("DELETE FROM FileRating r WHERE r.file.id IN :fileIds")
+    void deleteAllByFileIdIn(@Param("fileIds") Collection<Long> fileIds);
 
     // Account deletion: the score stays in the file's average, but no longer points to anyone
     @Modifying

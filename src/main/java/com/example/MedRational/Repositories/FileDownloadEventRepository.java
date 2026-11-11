@@ -14,6 +14,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -96,4 +97,9 @@ public interface FileDownloadEventRepository extends JpaRepository<FileDownloadE
     @Modifying
     @Query("UPDATE FileDownloadEvent e SET e.user = null WHERE e.user.id = :userId")
     void anonymizeByUserId(@Param("userId") Long userId);
+
+    // Before deleting files: file_id has no ON DELETE CASCADE (see StudyFileReferences)
+    @Modifying
+    @Query("DELETE FROM FileDownloadEvent e WHERE e.file.id IN :fileIds")
+    void deleteAllByFileIdIn(@Param("fileIds") Collection<Long> fileIds);
 }

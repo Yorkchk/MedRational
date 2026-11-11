@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -63,4 +64,9 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
     @Modifying
     @Query("DELETE FROM Favorite f WHERE f.user.id = :userId")
     void deleteAllByUserId(@Param("userId") Long userId);
+
+    // Before deleting files: file_id has no ON DELETE CASCADE (see StudyFileReferences)
+    @Modifying
+    @Query("DELETE FROM Favorite f WHERE f.file.id IN :fileIds")
+    void deleteAllByFileIdIn(@Param("fileIds") Collection<Long> fileIds);
 }

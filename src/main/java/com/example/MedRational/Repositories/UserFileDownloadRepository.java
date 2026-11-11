@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,4 +27,9 @@ public interface UserFileDownloadRepository extends JpaRepository<UserFileDownlo
     @Modifying
     @Query("DELETE FROM UserFileDownload d WHERE d.user.id = :userId")
     void deleteAllByUserId(@Param("userId") Long userId);
+
+    // Before deleting files: file_id has no ON DELETE CASCADE (see StudyFileReferences)
+    @Modifying
+    @Query("DELETE FROM UserFileDownload d WHERE d.file.id IN :fileIds")
+    void deleteAllByFileIdIn(@Param("fileIds") Collection<Long> fileIds);
 }
