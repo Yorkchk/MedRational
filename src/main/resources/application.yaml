@@ -22,6 +22,14 @@ spring:
           auth: true
           starttls:
             enable: true
+            required: true      # never send credentials or codes in clear text
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
+
+# Sender of every email. With Amazon SES it must be a verified identity, e.g. "SWISRA <no-reply@example.com>"
+mail:
+  from: ${MAIL_FROM}
 
 jwt:
   secret: ${JWT_SECRET}
