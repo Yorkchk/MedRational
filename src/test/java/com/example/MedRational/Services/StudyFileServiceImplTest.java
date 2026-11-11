@@ -4,11 +4,11 @@ import com.example.MedRational.DTOs.UpdateStudyFileRequestDTO;
 import com.example.MedRational.Entities.Category;
 import com.example.MedRational.Entities.Reasoning;
 import com.example.MedRational.Entities.StudyFile;
-import com.example.MedRational.Repositories.FileRatingRepository;
 import com.example.MedRational.Repositories.ReasoningRepository;
 import com.example.MedRational.Repositories.StudyFileRepository;
 import com.example.MedRational.Services.Implementations.MappingServiceImpl;
 import com.example.MedRational.Services.Implementations.R2StorageServiceImpl;
+import com.example.MedRational.Services.Implementations.StudyFileReferences;
 import com.example.MedRational.Services.Implementations.StudyFileServiceImpl;
 import com.example.MedRational.Services.Interfaces.NewFilesNotificationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,11 +37,11 @@ class StudyFileServiceImplTest {
     private final ReasoningRepository reasoningRepository = mock(ReasoningRepository.class);
     private final R2StorageServiceImpl r2 = mock(R2StorageServiceImpl.class);
     private final MappingServiceImpl mappingService = mock(MappingServiceImpl.class);
-    private final FileRatingRepository fileRatingRepository = mock(FileRatingRepository.class);
+    private final StudyFileReferences references = mock(StudyFileReferences.class);
     private final NewFilesNotificationService newFiles = mock(NewFilesNotificationService.class);
 
     private final StudyFileServiceImpl service = new StudyFileServiceImpl(
-            studyFileRepository, reasoningRepository, r2, mappingService, fileRatingRepository, newFiles);
+            studyFileRepository, reasoningRepository, r2, mappingService, references, newFiles);
 
     @BeforeEach
     void setUp() throws Exception {

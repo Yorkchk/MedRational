@@ -6,7 +6,6 @@ import com.example.MedRational.Entities.Category;
 import com.example.MedRational.Entities.Reasoning;
 import com.example.MedRational.Entities.StudyFile;
 import com.example.MedRational.Repositories.CategoryRepository;
-import com.example.MedRational.Repositories.FileRatingRepository;
 import com.example.MedRational.Repositories.ReasoningRepository;
 import com.example.MedRational.Services.Interfaces.CategoryService;
 import jakarta.persistence.EntityNotFoundException;
@@ -25,7 +24,7 @@ public class CategoryServiceImpl implements CategoryService {
     private final MappingServiceImpl mappingService;
     private final ReasoningRepository reasoningRepository;
     private final R2StorageServiceImpl r2StorageService;
-    private final FileRatingRepository fileRatingRepository;
+    private final StudyFileReferences studyFileReferences;
 
 
     @Transactional(readOnly = true)
@@ -91,8 +90,11 @@ public class CategoryServiceImpl implements CategoryService {
             r2StorageService.deleteFiles(keysToDelete);
         }
 
-        // 2. Clean Supabase (file_ratings has no ON DELETE CASCADE)
-        fileRatingRepository.deleteAllByCategoryId(id);
+        // 2. Clean Supabase: rows pointing at the files first, then the category (cascades to reasonings and files)
+        studyFileReferences.deleteAllFor(reasonings.stream()
+                .flatMap(r -> r.getFiles().stream())
+                .map(StudyFile::getId)
+                .toList());
         categoryRepository.delete(category);
     }
 

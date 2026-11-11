@@ -5,7 +5,6 @@ import com.example.MedRational.DTOs.StudyFileResponse;
 import com.example.MedRational.DTOs.UpdateStudyFileRequestDTO;
 import com.example.MedRational.Entities.Reasoning;
 import com.example.MedRational.Entities.StudyFile;
-import com.example.MedRational.Repositories.FileRatingRepository;
 import com.example.MedRational.Repositories.ReasoningRepository;
 import com.example.MedRational.Repositories.StudyFileRepository;
 import com.example.MedRational.Services.Interfaces.NewFilesNotificationService;
@@ -37,7 +36,7 @@ public class StudyFileServiceImpl implements StudyFileService {
     private final ReasoningRepository reasoningRepository;
     private final R2StorageServiceImpl r2StorageService;
     private final MappingServiceImpl mappingService;
-    private final FileRatingRepository fileRatingRepository;
+    private final StudyFileReferences studyFileReferences;
     private final NewFilesNotificationService newFilesNotificationService;
 
     @Transactional
@@ -125,8 +124,7 @@ public class StudyFileServiceImpl implements StudyFileService {
         if (studyFile.getPreviewStorageKey() != null) {
             r2StorageService.deleteFile(studyFile.getPreviewStorageKey());
         }
-        // file_ratings has no ON DELETE CASCADE
-        fileRatingRepository.deleteAllByFileId(fileId);
+        studyFileReferences.deleteAllFor(List.of(fileId));
         studyFileRepository.delete(studyFile);
     }
 

@@ -49,6 +49,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Analytics file items include the file's `reasoningId`.
 
 ### Fixed
+- Deleting a category, a reasoning or a study file failed with a server error once one of its files had been downloaded, favorited or listed in someone's recent downloads. Their download events, favorites, recent downloads and ratings are now deleted with the file.
 - Running the tests no longer leaves a LibreOffice process behind on Windows, which made the next local start fail to launch LibreOffice (`extensions.pmap` locked). The context test runs with the new `preview.office-enabled=false`.
 - Regular users can rate files: `POST`/`DELETE /api/v1/files/{fileId}/ratings` were admin-only, so rating returned 403.
 - Deleting a rated file, reasoning or category no longer fails on the `file_ratings` foreign key.
