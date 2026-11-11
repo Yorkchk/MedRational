@@ -42,7 +42,7 @@ jobs:
       # sha-<commit> is immutable: uat runs it and prod is promoted with the same tag.
       # latest always points to the newest build from main.
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE }}
           tags: |
