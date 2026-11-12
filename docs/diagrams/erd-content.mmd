@@ -1,0 +1,40 @@
+erDiagram
+    categories {
+        bigint id PK
+        string name UK
+        string description
+        datetime created_at
+    }
+    reasonings {
+        bigint id PK
+        bigint category_id FK
+        string title
+        text content
+        datetime created_at
+    }
+    study_files {
+        bigint id PK
+        bigint reasoning_id FK
+        string file_name
+        string file_type
+        string storage_key "R2 object key"
+        string preview_storage_key "cached PDF"
+        bigint file_size_bytes
+        string description
+        double avg_rating
+        int total_ratings
+        datetime uploaded_at
+    }
+    hashtags {
+        bigint id PK
+        string name UK
+    }
+    file_hashtags {
+        bigint file_id FK
+        bigint hashtag_id FK
+    }
+
+    categories ||--o{ reasonings : contains
+    reasonings ||--o{ study_files : contains
+    study_files ||--o{ file_hashtags : "tagged with"
+    hashtags ||--o{ file_hashtags : tags

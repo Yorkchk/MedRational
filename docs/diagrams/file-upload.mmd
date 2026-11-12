@@ -1,0 +1,14 @@
+sequenceDiagram
+    participant Admin as Admin app
+    participant API
+    participant R2 as Cloudflare R2
+    participant DB as PostgreSQL
+    participant FCM as Firebase
+
+    Admin->>API: POST /files/upload-batch/{reasoningId} (multipart)
+    loop each file
+        API->>R2: put object
+        API->>DB: insert study_files row
+    end
+    API->>FCM: one "new files" push to the topic
+    API-->>Admin: created files

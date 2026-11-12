@@ -1,0 +1,47 @@
+erDiagram
+    direction LR
+    users {
+        bigint id PK
+        string email UK
+        enum role
+    }
+    favorites {
+        bigint user_id FK
+        bigint file_id FK
+        datetime created_at
+    }
+    file_ratings {
+        bigint user_id FK "nullable"
+        bigint file_id FK
+        int score "1 to 5"
+    }
+    user_file_downloads {
+        bigint user_id FK
+        bigint file_id FK
+        datetime downloaded_at "latest only"
+    }
+    file_download_events {
+        bigint user_id FK "nullable"
+        bigint file_id FK
+        datetime created_at
+    }
+    file_view_events {
+        bigint user_id FK "nullable"
+        bigint file_id FK
+        datetime created_at
+    }
+    study_files {
+        bigint id PK
+        string file_name
+    }
+
+    users ||--o{ favorites : ""
+    users |o--o{ file_ratings : ""
+    users ||--o{ user_file_downloads : ""
+    users |o--o{ file_download_events : ""
+    users |o--o{ file_view_events : ""
+    favorites }o--|| study_files : ""
+    file_ratings }o--|| study_files : ""
+    user_file_downloads }o--|| study_files : ""
+    file_download_events }o--|| study_files : ""
+    file_view_events }o--|| study_files : ""
