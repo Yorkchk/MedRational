@@ -1,0 +1,21 @@
+flowchart TB
+    App["Android app"] -- "HTTPS + JWT" --> Caddy["Caddy (TLS)"]
+    Caddy --> C
+
+    subgraph API["Spring Boot API (Docker)"]
+        direction TB
+        C["Controllers"] --> S["Services"]
+        Sched["Schedulers"] --> S
+        S --> R["Repositories (JPA)"]
+    end
+
+    R --> DB[("PostgreSQL<br/>Supabase")]
+    S --> Ext
+
+    subgraph Ext["External services"]
+        direction TB
+        R2[("Cloudflare R2")]
+        SES["Amazon SES<br/>emails"]
+        FCM["Firebase<br/>push"]
+        LO["LibreOffice<br/>Office → PDF"]
+    end

@@ -1,0 +1,49 @@
+erDiagram
+    direction LR
+    users {
+        bigint id PK
+        string email UK
+    }
+    workshop_projects {
+        bigint id PK
+        bigint author_id FK "nullable"
+        string title
+        text description
+        enum project_type
+        enum status
+        string form_link
+        int capacity
+        datetime registration_opens_at
+        datetime registration_closes_at
+        boolean sent_flags "x4"
+    }
+    workshop_attachments {
+        bigint id PK
+        bigint project_id FK
+        string file_name
+        string file_url
+        string preview_storage_key
+    }
+    suggestions {
+        bigint id PK
+        bigint user_id FK
+        string title
+        text description
+        embedded attachment
+        enum status
+        datetime created_at
+    }
+    suggestion_messages {
+        bigint id PK
+        bigint suggestion_id FK
+        bigint author_id FK "nullable"
+        boolean from_admin
+        text body
+        embedded attachment
+    }
+
+    users |o--o{ workshop_projects : authors
+    workshop_projects ||--o{ workshop_attachments : has
+    users ||--o{ suggestions : sends
+    suggestions ||--o{ suggestion_messages : thread
+    users |o--o{ suggestion_messages : writes

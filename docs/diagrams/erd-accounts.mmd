@@ -1,0 +1,42 @@
+erDiagram
+    direction LR
+    users {
+        bigint id PK
+        string email UK
+        string password_hash
+        string first_name
+        string last_name
+        string phone_number
+        enum role "USER or ADMIN"
+        boolean email_verified
+        string otp_code
+        datetime otp_expiry
+        string pending_email
+        datetime novelties_seen_at
+        datetime created_at
+    }
+    user_sessions {
+        bigint id PK
+        bigint user_id FK
+        string token_hash UK "SHA-256"
+        datetime last_used_at
+        datetime expires_at
+    }
+    user_daily_activity {
+        bigint id PK
+        bigint user_id FK
+        date activity_date
+    }
+    notifications {
+        bigint id PK
+        bigint user_id FK "null = broadcast"
+        enum type
+        string title
+        string body
+        bigint target_id
+        boolean is_read
+    }
+
+    users ||--o{ user_sessions : "signed in on"
+    users ||--o{ user_daily_activity : "active on"
+    users |o--o{ notifications : receives

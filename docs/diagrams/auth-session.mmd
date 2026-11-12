@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant App
+    participant API
+    participant DB as PostgreSQL
+    participant SES as Amazon SES
+
+    App->>API: POST /auth/user/register
+    API->>DB: save unverified user + code
+    API->>SES: email the 6-digit code
+    App->>API: POST /auth/user/verify-registration {code}
+    API->>DB: emailVerified = true
+    App->>API: POST /auth/login {email, password}
+    API->>DB: create user_sessions row (token hash)
+    API-->>App: JWT (1 h) + refresh token
+    App->>API: GET /api/v1/... (Bearer JWT)
+    API-->>App: 401 once the JWT expires
+    App->>API: POST /auth/refresh {refreshToken}
+    API->>DB: replace hash, expiresAt = now + 60 days
+    API-->>App: new JWT + new refresh token

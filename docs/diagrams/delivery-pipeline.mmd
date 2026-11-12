@@ -1,0 +1,5 @@
+flowchart TB
+    PR["Pull request"] -- "Backend CI (tests + Postgres)" --> Main["main"]
+    Main -- "publish-image" --> GHCR["Docker image on GHCR<br/>medrational:sha-…"]
+    GHCR -- "Deploy (auto or manual)" --> UAT["uat server"]
+    GHCR -- "Deploy (manual)" --> PROD["prod server"]

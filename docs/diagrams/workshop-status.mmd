@@ -1,0 +1,7 @@
+stateDiagram-v2
+    [*] --> UPCOMING: admin creates it<br/>(push: new workshop)
+    UPCOMING --> OPEN: registrationOpensAt<br/>(push 10 min before, and at opening)
+    OPEN --> CLOSED: registrationClosesAt<br/>(push 10 min before, and at closing)
+    UPCOMING --> OPEN: admin override
+    OPEN --> CLOSED: admin override
+    CLOSED --> UPCOMING: admin override

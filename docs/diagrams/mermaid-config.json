@@ -1,0 +1,8 @@
+{
+  "theme": "neutral",
+  "htmlLabels": false,
+  "themeVariables": { "fontSize": "20px" },
+  "flowchart": { "htmlLabels": false, "nodeSpacing": 30, "rankSpacing": 40 },
+  "sequence": { "actorMargin": 30, "messageFontSize": 18, "actorFontSize": 18, "noteFontSize": 18 },
+  "state": { "fontSize": 18 }
+}
