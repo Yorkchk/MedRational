@@ -7,6 +7,13 @@ REST backend of **SWISRA** (*Study With Scome RAbat*), a study app for medical s
 
 Android client: **[Yorkchk/MedRational-Android](https://github.com/Yorkchk/MedRational-Android)**
 
+## Demo
+
+A walkthrough of the Android app's main features (about 3½ minutes). Every screen in it is served by this API.
+
+<!-- Upload SWISRA_Demo-github.mp4 in GitHub's README editor and replace the line below with the link GitHub inserts (keep it alone on its line). -->
+VIDEO_LINK_HERE
+
 ## About the project
 
 ### Why it exists
@@ -17,6 +24,7 @@ SWISRA was built in collaboration with a medical student from **SCOME Rabat**, a
 - **No missed workshops:** students get a notification when a workshop is announced, 10 minutes before registration opens and when it opens. This matters most for first-come, first-served workshops.
 - **Material that stays up to date:** students are notified of new files, and a "What's new" feed shows what was added since their last visit.
 - **Feedback to the association** through suggestions, and **statistics for its team** on what students actually use.
+
 ### What it does
 
 SWISRA helps medical students practise **clinical reasoning**. Admins organize study material in three levels:
