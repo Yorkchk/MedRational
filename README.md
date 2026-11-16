@@ -12,7 +12,9 @@ Android client: **[Yorkchk/MedRational-Android](https://github.com/Yorkchk/MedRa
 A walkthrough of the Android app's main features (about 3½ minutes). Every screen in it is served by this API.
 
 <!-- Upload SWISRA_Demo-github.mp4 in GitHub's README editor and replace the line below with the link GitHub inserts (keep it alone on its line). -->
-VIDEO_LINK_HERE
+https://github.com/user-attachments/assets/dd23db48-c827-469a-8441-4c0a67789850
+
+
 
 ## About the project
 
